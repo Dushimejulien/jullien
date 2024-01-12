@@ -44,7 +44,7 @@ app.use("/api/upload", uploadRouter);
 app.use("/api/report", reportRouter);
 app.use("/api/expense", expenseRouter);
 app.use("/api/special", specialRouter);
-const __dirname = path.resolve();
+
 
 app.get("/api/products", (req, res) => {
   res.send(data.products);
@@ -69,7 +69,7 @@ app.get("/api/products/:id", (req, res) => {
   }
 });
 
-
+const __dirname = path.resolve();
 app.use(express.static(path.join(__dirname, "/store/build")));
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "/store/build/index.html"));
