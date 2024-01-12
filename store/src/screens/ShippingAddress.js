@@ -19,10 +19,8 @@ export default function ShippingAddress() {
   const [phone, setPhone] = useState(shippingAddress.Phone || "");
   const [country, setCountry] = useState(shippingAddress.country || "");
   useEffect(() => {
-    if (!userInfo) {
-      navigate("/signin?redirect=/shipping");
-    }
-    if (userInfo.isAdmin || userInfo.isSeller) {
+    
+    if (userInfo&&(userInfo.isAdmin || userInfo.isSeller)) {
       navigate("/signin?redirect=/admin/createReport");
     }
     if (userInfo &&(userInfo !==userInfo.isAdmin ||userInfo !== userInfo.isSeller)) {
