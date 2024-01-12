@@ -34,9 +34,14 @@ export default function CartScreen() {
   };
   const checkoutHandler = () => {
     if (userInfo) {
-      if (userInfo.isAdmin === true || userInfo.isSeller === true) {
-        navigate("/signin?redirect=/admin/createReport");
-      }
+      
+        if (userInfo.isAdmin === true || userInfo.isSeller === true) {
+          navigate("/signin?redirect=/admin/createReport");
+        }
+        if (userInfo.isAdmin !== true || userInfo.isSeller !== true) {
+          navigate("/signin?redirect=/shipping");
+        }
+      
     } else {
       navigate("/signin?redirect=/shipping");
     }
