@@ -33,18 +33,16 @@ export default function CartScreen() {
     ctxDispatch({ type: "CART_REMOVE_ITEM", payload: item });
   };
   const checkoutHandler = () => {
-    if (userInfo) {
+    
       
-        if (userInfo.isAdmin === true || userInfo.isSeller === true) {
+        if (userInfo&&(userInfo.isAdmin === true || userInfo.isSeller === true)) {
           navigate("/signin?redirect=/admin/createReport");
         }
-        if (userInfo.isAdmin !== true || userInfo.isSeller !== true) {
+        if (userInfo&&(userInfo.isAdmin !== true || userInfo.isSeller !== true)) {
           navigate("/signin?redirect=/shipping");
         }
       
-    } else {
-      navigate("/signin?redirect=/shipping");
-    }
+   
   };
   return (
     <div>
