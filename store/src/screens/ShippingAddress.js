@@ -25,6 +25,9 @@ export default function ShippingAddress() {
     if (userInfo.isAdmin || userInfo.isSeller) {
       navigate("/signin?redirect=/admin/createReport");
     }
+    if (userInfo &&(userInfo !==userInfo.isAdmin ||userInfo !== userInfo.isSeller)) {
+      navigate("/signin?redirect=/admin/createReport");
+    }
   }, [userInfo, navigate]);
   const submitHandler = (e) => {
     e.preventDefault();

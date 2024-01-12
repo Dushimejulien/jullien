@@ -77,7 +77,7 @@ function HomeScreen() {
     return (
       <div>
         <Helmet>
-          <title>jullien</title>
+          <title>Rightlamps shop</title>
         </Helmet>
         <h1>Ibicuruzwa mububiko</h1>
 
@@ -126,7 +126,7 @@ function HomeScreen() {
     return (
       <div>
         <Helmet>
-          <title>jullien</title>
+          <title>Rightlamps shop</title>
         </Helmet>
         <h1>Ibicuruzwa mububiko</h1>
 
@@ -167,7 +167,7 @@ function HomeScreen() {
     return (
       <div>
         <Helmet>
-          <title>jullien</title>
+          <title>Rightlamps shop</title>
         </Helmet>
         <h1>Ibicuruzwa mububiko</h1>
         <Button type="button" onClick={() => navigate("/special")}>
