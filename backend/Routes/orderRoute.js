@@ -209,7 +209,7 @@ console.log(requestPayment)
       amount: amount,
       phone: phone,
       referenceID: referenceId,
-      //user: req.user._id,
+      
     });
 
     await payment.save();
