@@ -120,15 +120,19 @@ productRouter.delete(
   isAuth,
   isAdmin,
   expressAsyncHandler(async (req, res) => {
-    const product = await Product.findById(req.params.id);
-    if (product) {
-      await product.remove();
+    const productId = req.params.id;
+
+    // Use deleteOne or deleteMany instead of remove
+    const result = await Product.deleteOne({ _id: productId });
+
+    if (result.deletedCount > 0) {
       res.send({ message: "Product Deleted" });
     } else {
       res.status(404).send({ message: "Product Not Found" });
     }
   })
 );
+
 
 const PAGE_SIZE = 3;
 // manage product

@@ -178,11 +178,11 @@ function Product(props) {
     }
   };
 
-  if (userInfo && userInfo.isAdmin) {
+  if (userInfo&&userInfo.isAdmin) {
     return (
       <div>
         <Card style={cardStyle}>
-          <Link to={`/product/${product.slug}`}>
+          <Link to={`/product/${product._id}`}>
             <img
               src={product.image}
               className="card-img-top"
@@ -190,7 +190,7 @@ function Product(props) {
             />
           </Link>
           <Card.Body>
-            <Link to={`/product/${product.slug}`}>
+            <Link to={`/product/${product._id}`}>
               <Card.Title>{product.name}</Card.Title>
             </Link>
             <Card.Text>{product.price} RWF</Card.Text>
