@@ -1,4 +1,4 @@
-import express from "express";
+import express, { query } from "express";
 import expressAsyncHandler from "express-async-handler";
 import { isAdmin, isAuth, suAdmin } from "../utils.js";
 import Report from "../models/reportModal.js";
@@ -6,8 +6,51 @@ import User from "../models/userModal.js";
 import Product from "../models/productModel.js";
 
 const reportRouter = express.Router();
-//koba
-reportRouter.post(
+
+reportRouter.delete(
+  "/:id?",
+  isAuth,
+  expressAsyncHandler(async (req, res) => {
+    try {
+      // Handle bulk delete
+      if (!req.params.id) {
+        const { reportIds } = req.body;
+        
+        // Validate input
+        if (!reportIds || !Array.isArray(reportIds) || reportIds.length === 0) {
+          return res.status(400).send({message:"Report IDs array is required"});
+        }
+        
+        // Delete multiple reports
+        const result = await Report.deleteMany({
+          _id: { $in: reportIds }
+        });
+        
+        if(result.deletedCount > 0){
+          return res.send({
+            message: `${result.deletedCount} report(s) successfully deleted`,
+            deletedCount: result.deletedCount
+          });
+        }else{
+          return res.status(404).send({message:"No reports found with the provided IDs"});
+        }
+      }
+      
+      // Handle single delete
+      const report = await Report.findByIdAndDelete(req.params.id)
+      if(report){
+        res.send({message:"Report successfully deleted"})
+      }else{
+        res.status(404).send({message:"Report not found"})
+      }
+    } catch (error) {
+      console.log(error);
+      res.status(500).send({message:"Server error", error: error.message})
+    }
+  })
+);
+
+  reportRouter.post(
   "/",
   isAuth,
 
@@ -227,10 +270,17 @@ reportRouter.get(
   isAuth,
 
   expressAsyncHandler(async (req, res) => {
-    const report = await Report.find().sort({
-      createdAt: -1,
-    });
-    res.send(report);
+    const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const total = await Report.countDocuments({});
+  const reports = await Report.find({})
+    .skip(skip)
+    .limit(limit)
+    .sort({ createdAt: -1 });
+
+  res.json({ reports, page, pages: Math.ceil(total / limit) });
   })
 );
 reportRouter.put(
