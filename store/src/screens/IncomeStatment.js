@@ -372,7 +372,7 @@ console.log(reports.reportItems);
                             <td>
                              <Button
                         variant="info"
-                        onClick={() => navigate(`/report/${report._id}`)}
+                        onClick={() => console.log("Wait")}
                       >
                         Details
                       </Button>
