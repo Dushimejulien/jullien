@@ -226,28 +226,110 @@ reportRouter.get(
 
 reportRouter.get("/search", async (req, res) => {
   try {
-    const { key, page, limit, depts } = req.query;
+    const { key, page = 1, limit = 10, depts, dateFilter, year, month, day } = req.query;
     const skip = (page - 1) * limit;
     
-    // Build the search filter based on 'key' and 'depts'
-    const search = key
-      ? {
-          $or: [
-            { givenTo: { $regex: key, $options: "i" } },
-            { comments: { $regex: key, $options: "i" } },
-          ],
-          depts: { $gt: 0 }, // Add condition for 'depts' greater than 0
+    // Build the base search filter
+    let searchFilter = {};
+    
+    // Add text search if key is provided
+    if (key) {
+      searchFilter.$or = [
+        { givenTo: { $regex: key, $options: "i" } },
+        { comments: { $regex: key, $options: "i" } },
+        { "reportItems.name": { $regex: key, $options: "i" } },
+        { paymentMethod: { $regex: key, $options: "i" } },
+        { status: { $regex: key, $options: "i" } }
+      ];
+    }
+    
+    // Add depts filter if provided
+    if (depts !== undefined) {
+      if (depts === "true" || depts === true) {
+        searchFilter.depts = { $gt: 0 };
+      } else if (depts === "false" || depts === false) {
+        searchFilter.depts = { $eq: 0 };
+      }
+    }
+    
+    // Add year filter if provided
+    if (year) {
+      const yearInt = parseInt(year);
+      if (!isNaN(yearInt)) {
+        const startDate = new Date(yearInt, 0, 1);
+        const endDate = new Date(yearInt + 1, 0, 1);
+        searchFilter.createdAt = {
+          $gte: startDate,
+          $lt: endDate
+        };
+      }
+    }
+    
+    // Add month filter if provided (requires year)
+    if (month && year) {
+      const yearInt = parseInt(year);
+      const monthInt = parseInt(month) - 1; // Months are 0-indexed in JS
+      if (!isNaN(yearInt) && !isNaN(monthInt)) {
+        const startDate = new Date(yearInt, monthInt, 1);
+        const endDate = new Date(yearInt, monthInt + 1, 1);
+        searchFilter.createdAt = {
+          $gte: startDate,
+          $lt: endDate
+        };
+      }
+    }
+    
+    // Add day filter if provided (requires year and month)
+    if (day && month && year) {
+      const yearInt = parseInt(year);
+      const monthInt = parseInt(month) - 1; // Months are 0-indexed in JS
+      const dayInt = parseInt(day);
+      if (!isNaN(yearInt) && !isNaN(monthInt) && !isNaN(dayInt)) {
+        const startDate = new Date(yearInt, monthInt, dayInt);
+        const endDate = new Date(yearInt, monthInt, dayInt + 1);
+        searchFilter.createdAt = {
+          $gte: startDate,
+          $lt: endDate
+        };
+      }
+    }
+    
+    // Add date range filter if provided
+    if (dateFilter) {
+      try {
+        const dateFilters = JSON.parse(dateFilter);
+        
+        if (dateFilters.startDate || dateFilters.endDate) {
+          searchFilter.createdAt = {};
+          
+          if (dateFilters.startDate) {
+            searchFilter.createdAt.$gte = new Date(dateFilters.startDate);
+          }
+          
+          if (dateFilters.endDate) {
+            // Set end of day for end date
+            const endDate = new Date(dateFilters.endDate);
+            endDate.setHours(23, 59, 59, 999);
+            searchFilter.createdAt.$lte = endDate;
+          }
         }
-      : { depts: { $gt: 0 } }; // Only filter by 'depts' if 'key' is not provided
-
-    const totalCount = await Report.countDocuments(search);
+      } catch (e) {
+        console.error("Error parsing date filter:", e);
+      }
+    }
     
-    const data = await Report.find(search).skip(skip).limit(parseInt(limit));
+    const totalCount = await Report.countDocuments(searchFilter);
     
-
+    const data = await Report.find(searchFilter)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+    
     res.json({
       data,
       totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      currentPage: parseInt(page)
     });
   } catch (error) {
     console.error("Error fetching report data:", error);
@@ -320,85 +402,3 @@ reportRouter.put(
       report.grossProfit = report.sales - report.igice;
       report.taxPrice = report.grossProfit * 0.18;
       report.createdAt = Date.now();
-      report.netProfit = report.grossProfit - report.taxPrice;
-      report.reportItems = req.body.reportItems.map((x) => ({
-        ...x,
-        product: x._id,
-      }));
-
-      const updatedReport = await report.save();
-      res.send({ message: "Report updated!", report: updatedReport });
-    }
-  })
-);
-
-reportRouter.put(
-  "/:id",
-  isAuth,
-  expressAsyncHandler(async (req, res) => {
-    const report = await Report.findById(req.params.id);
-
-    if (report && report.depts && !report.soldAt) {
-      report.soldAt = report.depts / report.real;
-      report.paymentMethod = report.paymentMethod;
-      report.comments = report.comments;
-      report.sales = report.depts;
-
-      if (report.igice !== 0) {
-        report.depts = report.depts - report.igice;
-      } else {
-        report.depts = report.depts * 0;
-      }
-      report.costs = report.costs;
-      report.grossProfit = report.sales - report.costs;
-      report.taxPrice = report.grossProfit * 0.18;
-      report.createdAt = Date.now();
-      report.netProfit = report.grossProfit - report.taxPrice;
-      report.reportItems = req.body.reportItems.map((x) => ({
-        ...x,
-        product: x._id,
-      }));
-      const updatedReport = await report.save();
-      res.send({ message: "Report updated!", report: updatedReport });
-    } else if (report && report.depts && report.soldAt) {
-      report.soldAt = report.soldAt;
-      report.ibyangiritse = report.ibyangiritse;
-      report.paymentMethod = report.paymentMethod;
-      report.comments = report.comments;
-      report.sales = report.depts + report.sales;
-      if (report.igice !== 0) {
-        report.depts = report.depts - report.igice;
-      } else {
-        report.depts = report.depts * 0;
-      }
-      report.costs = report.costs;
-      report.grossProfit = report.sales - report.costs;
-      report.taxPrice = report.grossProfit * 0.18;
-      report.createdAt = Date.now();
-      report.netProfit = report.grossProfit - report.taxPrice;
-      report.reportItems = req.body.reportItems.map((x) => ({
-        ...x,
-        product: x._id,
-      }));
-      const updatedReport = await report.save();
-      res.send({ message: "Report updated!", report: updatedReport });
-    } else {
-      res.status(404).send({ message: "Report not found" });
-    }
-  })
-);
-reportRouter.get(
-  "/:id",
-  isAuth,
-
-  expressAsyncHandler(async (req, res) => {
-    const report = await Report.findById(req.params.id);
-    if (report) {
-      res.send(report);
-    } else {
-      res.status(404).send({ message: "Report not found" });
-    }
-  })
-);
-
-export default reportRouter;
