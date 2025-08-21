@@ -1,22 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   Container, Row, Col, Card, Table, Pagination,
-  Button, Badge, Modal, Form, Alert, Spinner, InputGroup
+  Button, Badge, Modal, Form, Alert, Spinner,
+  InputGroup, Dropdown, FormControl, Accordion
 } from 'react-bootstrap';
 import axios from 'axios';
-import { useContext } from 'react';
 import { Store } from '../Store';
 import { useNavigate } from 'react-router-dom';
 
-const Report= () => {
+const ReportsList = () => {
+  const navigate = useNavigate()
+  const { state,  } = useContext(Store);
+  const {userInfo}=state
   const [reports, setReports] = useState([]);
-    const { state } = useContext(Store);
-    const { userInfo } = state;
-     const navigate = useNavigate();
+  const [filteredReports, setFilteredReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [limit] = useState(10);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -26,6 +28,14 @@ const Report= () => {
   const [selectedReports, setSelectedReports] = useState(new Set());
   const [allSelectedOnPage, setAllSelectedOnPage] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [sortOrder, setSortOrder] = useState('newest');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState('text');
+  const [yearFilter, setYearFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
+  const [dayFilter, setDayFilter] = useState('');
+  const [deptsFilter, setDeptsFilter] = useState('all');
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Load selected reports from localStorage on component mount
   useEffect(() => {
@@ -38,9 +48,8 @@ const Report= () => {
       }
     }
   }, []);
-console.log(reports.reportItems);
 
-  // Save selected reports to localStorage whenever they change
+  // // Save selected reports to localStorage whenever they change
   // useEffect(() => {
   //   localStorage.setItem('selectedReports', JSON.stringify(Array.from(selectedReports)));
   // }, [selectedReports]);
@@ -50,39 +59,94 @@ console.log(reports.reportItems);
   }, [currentPage]);
 
   useEffect(() => {
+    // Apply sorting to filtered reports
+    const sorted = [...filteredReports].sort((a, b) => {
+      if (sortOrder === 'newest') {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      } else {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+    });
+    
+    setFilteredReports(sorted);
+    
     // Check if all reports on current page are selected
-    const currentPageReportIds = reports.map(report => report._id);
+    const currentPageReportIds = sorted.map(report => report._id);
     const allSelected = currentPageReportIds.length > 0 && 
                         currentPageReportIds.every(id => selectedReports.has(id));
     setAllSelectedOnPage(allSelected);
-  }, [reports, selectedReports]);
+  }, [sortOrder, selectedReports]);
 
-  const fetchReports = async () => {
+  const fetchReports = async (searchParams = {}) => {
     try {
       setLoading(true);
       setError('');
       
-      const token = userInfo.token;
-      const response = await axios.get(`/api/report/all?page=${currentPage}&limit=${limit}`, {
+      const token = userInfo.token
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: limit,
+        ...searchParams
+      });
+      
+      // Add date filters if provided
+      if (yearFilter) params.append('year', yearFilter);
+      if (monthFilter) params.append('month', monthFilter);
+      if (dayFilter) params.append('day', dayFilter);
+      
+      if (deptsFilter !== 'all') {
+        params.append('depts', deptsFilter === 'withDepts');
+      }
+      
+      const response = await axios.get(`/api/report/search?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
-      // Reverse the array to display from oldest to newest
-      const sortedReports = [...response.data.reports].reverse();
-      
-      setReports(sortedReports);
-      setTotalPages(response.data.pages);
+      setReports(response.data.data);
+      setFilteredReports(response.data.data);
+      setTotalPages(response.data.totalPages);
+      setTotalCount(response.data.totalCount);
     } catch (err) {
       setError('Failed to fetch reports. Please try again.');
       console.error('Error fetching reports:', err);
     } finally {
       setLoading(false);
+      setSearchLoading(false);
     }
   };
 
- 
+  const handleSearch = () => {
+    setSearchLoading(true);
+    setCurrentPage(1);
+    
+    if (searchType === 'text' && searchQuery) {
+      fetchReports({ key: searchQuery });
+    } else if (searchType === 'date' && (yearFilter || monthFilter || dayFilter)) {
+      fetchReports();
+    } else {
+      // If no search criteria, fetch all reports
+      fetchReports();
+    }
+  };
+
+  const handleResetSearch = () => {
+    setSearchQuery('');
+    setYearFilter('');
+    setMonthFilter('');
+    setDayFilter('');
+    setDeptsFilter('all');
+    setCurrentPage(1);
+    fetchReports();
+  };
+
+  const handleDeleteClick = (report) => {
+    setSelectedReport(report);
+    setShowDeleteModal(true);
+    setDeleteError('');
+    setSuccessMessage('');
+  };
 
   const handleBulkDeleteClick = () => {
     if (selectedReports.size === 0) {
@@ -99,10 +163,10 @@ console.log(reports.reportItems);
       setDeleteLoading(true);
       setDeleteError('');
       
-      const token = userInfo.token;
+      const token = userInfo.token
       
       if (selectedReport) {
-        // Single delete - using the existing endpoint
+        // Single delete
         await axios.delete(`/api/report/${selectedReport._id}`, {
           headers: {
             Authorization: `Bearer ${token}`
@@ -116,34 +180,31 @@ console.log(reports.reportItems);
         
         setSuccessMessage('Report deleted successfully!');
       } else if (selectedReports.size > 0) {
-        // Bulk delete - using the new endpoint
+        // Bulk delete
         setBulkDeleteLoading(true);
+        const deletePromises = Array.from(selectedReports).map(id => 
+          axios.delete(`/api/report/${id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          })
+        );
         
-        // Convert Set to Array for the API call
-        const reportIds = Array.from(selectedReports);
-        
-        await axios.delete('/api/report', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          },
-          data: { reportIds } // Note: using data instead of params for DELETE with body
-        });
-        
+        await Promise.all(deletePromises);
         setSelectedReports(new Set());
-        setSuccessMessage(`${reportIds.length} report(s) deleted successfully!`);
+        setSuccessMessage(`${selectedReports.size} report(s) deleted successfully!`);
       }
       
       setShowDeleteModal(false);
       fetchReports(); // Refresh the list
     } catch (err) {
-      setDeleteError(err.response?.data?.message || 'Failed to delete report(s). Please try again.');
+      setDeleteError('Failed to delete report(s). Please try again.');
       console.error('Error deleting report(s):', err);
     } finally {
       setDeleteLoading(false);
       setBulkDeleteLoading(false);
     }
   };
-
 
   const toggleReportSelection = (reportId) => {
     const newSelections = new Set(selectedReports);
@@ -156,7 +217,7 @@ console.log(reports.reportItems);
   };
 
   const toggleSelectAll = () => {
-    const currentPageReportIds = reports.map(report => report._id);
+    const currentPageReportIds = filteredReports.map(report => report._id);
     
     if (allSelectedOnPage) {
       // Deselect all on current page
@@ -169,6 +230,18 @@ console.log(reports.reportItems);
       currentPageReportIds.forEach(id => newSelections.add(id));
       setSelectedReports(newSelections);
     }
+  };
+
+  const handleSortChange = (order) => {
+    setSortOrder(order);
+  };
+
+  const handleSearchTypeChange = (type) => {
+    setSearchType(type);
+    setSearchQuery('');
+    setYearFilter('');
+    setMonthFilter('');
+    setDayFilter('');
   };
 
   const handlePageChange = (pageNumber) => {
@@ -189,7 +262,44 @@ console.log(reports.reportItems);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'RWF'
-    }).format(amount);
+    }).format(amount || 0);
+  };
+
+  // Generate year options (from 2020 to current year)
+  const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = 2020; year <= currentYear; year++) {
+      years.push(year);
+    }
+    return years.reverse(); // Show most recent years first
+  };
+
+  // Generate month options
+  const generateMonthOptions = () => {
+    return [
+      { value: '1', label: 'January' },
+      { value: '2', label: 'February' },
+      { value: '3', label: 'March' },
+      { value: '4', label: 'April' },
+      { value: '5', label: 'May' },
+      { value: '6', label: 'June' },
+      { value: '7', label: 'July' },
+      { value: '8', label: 'August' },
+      { value: '9', label: 'September' },
+      { value: '10', label: 'October' },
+      { value: '11', label: 'November' },
+      { value: '12', label: 'December' }
+    ];
+  };
+
+  // Generate day options (1-31)
+  const generateDayOptions = () => {
+    const days = [];
+    for (let day = 1; day <= 31; day++) {
+      days.push(day);
+    }
+    return days;
   };
 
   const renderPaginationItems = () => {
@@ -206,7 +316,7 @@ console.log(reports.reportItems);
 
     // Page numbers - show up to 5 pages around current page
     const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, startPage + 30);
+    const endPage = Math.min(totalPages, startPage + 28);
     
     for (let number = startPage; number <= endPage; number++) {
       items.push(
@@ -250,10 +360,14 @@ console.log(reports.reportItems);
             <Card.Header className="d-flex justify-content-between align-items-center">
               <div>
                 <h3 className="mb-0">Sales Reports</h3>
+                <small className="text-muted">
+                  Displaying {filteredReports.length} of {totalCount} reports
+                  {sortOrder === 'newest' ? ' (newest first)' : ' (oldest first)'}
+                </small>
               </div>
               <div className="d-flex align-items-center">
                 <Badge bg="secondary" className="me-3">
-                  {reports.length} reports on this page
+                  {filteredReports.length} reports on this page
                 </Badge>
                 {selectedReports.size > 0 && (
                   <Badge bg="primary">
@@ -263,12 +377,156 @@ console.log(reports.reportItems);
               </div>
             </Card.Header>
             <Card.Body>
+              <Accordion defaultActiveKey="0" className="mb-4">
+                <Accordion.Item eventKey="0">
+                  <Accordion.Header>Search & Filter Options</Accordion.Header>
+                  <Accordion.Body>
+                    <Row>
+                      <Col md={12} className="mb-3">
+                        <Form.Check
+                          inline
+                          type="radio"
+                          label="Text Search"
+                          name="searchType"
+                          checked={searchType === 'text'}
+                          onChange={() => handleSearchTypeChange('text')}
+                        />
+                        <Form.Check
+                          inline
+                          type="radio"
+                          label="Date Search"
+                          name="searchType"
+                          checked={searchType === 'date'}
+                          onChange={() => handleSearchTypeChange('date')}
+                        />
+                      </Col>
+                      
+                      {searchType === 'text' ? (
+                        <Col md={8}>
+                          <InputGroup>
+                            <InputGroup.Text>
+                              <i className="fas fa-search"></i>
+                            </InputGroup.Text>
+                            <FormControl
+                              placeholder="Search by payment method, status, comments..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                            />
+                          </InputGroup>
+                        </Col>
+                      ) : (
+                        <Col md={8}>
+                          <Row>
+                            <Col md={4}>
+                              <Form.Label>Year</Form.Label>
+                              <Form.Select
+                                value={yearFilter}
+                                onChange={(e) => setYearFilter(e.target.value)}
+                              >
+                                <option value="">Select Year</option>
+                                {generateYearOptions().map(year => (
+                                  <option key={year} value={year}>{year}</option>
+                                ))}
+                              </Form.Select>
+                            </Col>
+                            <Col md={4}>
+                              <Form.Label>Month</Form.Label>
+                              <Form.Select
+                                value={monthFilter}
+                                onChange={(e) => setMonthFilter(e.target.value)}
+                                disabled={!yearFilter}
+                              >
+                                <option value="">Select Month</option>
+                                {generateMonthOptions().map(month => (
+                                  <option key={month.value} value={month.value}>{month.label}</option>
+                                ))}
+                              </Form.Select>
+                            </Col>
+                            <Col md={4}>
+                              <Form.Label>Day</Form.Label>
+                              <Form.Select
+                                value={dayFilter}
+                                onChange={(e) => setDayFilter(e.target.value)}
+                                disabled={!yearFilter || !monthFilter}
+                              >
+                                <option value="">Select Day</option>
+                                {generateDayOptions().map(day => (
+                                  <option key={day} value={day}>{day}</option>
+                                ))}
+                              </Form.Select>
+                            </Col>
+                          </Row>
+                        </Col>
+                      )}
+                      
+                      <Col md={2}>
+                        <Form.Label>Depts Filter</Form.Label>
+                        <Form.Select
+                          value={deptsFilter}
+                          onChange={(e) => setDeptsFilter(e.target.value)}
+                        >
+                          <option value="all">All Reports</option>
+                          <option value="withDepts">With Depts</option>
+                          <option value="withoutDepts">Without Depts</option>
+                        </Form.Select>
+                      </Col>
+                      
+                      <Col md={2} className="d-flex align-items-end">
+                        <Button 
+                          variant="primary" 
+                          onClick={handleSearch}
+                          disabled={searchLoading}
+                          className="me-2"
+                        >
+                          {searchLoading ? (
+                            <Spinner animation="border" size="sm" />
+                          ) : (
+                            'Search'
+                          )}
+                        </Button>
+                        <Button variant="outline-secondary" onClick={handleResetSearch}>
+                          Reset
+                        </Button>
+                      </Col>
+                    </Row>
+                  </Accordion.Body>
+                </Accordion.Item>
+              </Accordion>
+
+              <Row className="mb-3">
+                <Col md={6}>
+                  <Dropdown>
+                    <Dropdown.Toggle variant="outline-secondary">
+                      <i className="fas fa-sort me-1"></i>
+                      Sort: {sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu>
+                      <Dropdown.Item 
+                        active={sortOrder === 'newest'}
+                        onClick={() => handleSortChange('newest')}
+                      >
+                        Newest First
+                      </Dropdown.Item>
+                      <Dropdown.Item 
+                        active={sortOrder === 'oldest'}
+                        onClick={() => handleSortChange('oldest')}
+                      >
+                        Oldest First
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </Col>
+              </Row>
+
               {error && <Alert variant="danger">{error}</Alert>}
               {successMessage && <Alert variant="success">{successMessage}</Alert>}
               
-              {reports.length === 0 ? (
+              {filteredReports.length === 0 ? (
                 <Alert variant="info" className="text-center">
-                  No reports found.
+                  {searchQuery || yearFilter || monthFilter || dayFilter || deptsFilter !== 'all' 
+                    ? 'No reports match your search criteria.' 
+                    : 'No reports found.'}
                 </Alert>
               ) : (
                 <>
@@ -309,19 +567,26 @@ console.log(reports.reportItems);
                       <thead>
                         <tr>
                           <th style={{ width: '40px' }}></th>
-                          <th>#</th>
-                          <th>Items</th>
-                          <th>Sales</th>
-                          <th>Costs</th>
-                          <th>Profit</th>
-                          <th>Status</th>
-                          <th>Payment</th>
-                          <th>Date</th>
-                          <th>Actions</th>
+                        
+                <th>Date</th>
+                <th>Name</th>
+                <th>Quantity</th>
+                <th>Sold at</th>
+                <th>sales</th>
+                <th>costs</th>
+                <th>taxes</th>
+                <th>Gross profit</th>
+                <th>Net profit</th>
+                <th>Depts</th>
+                <th>Expense</th>
+                <th>Status</th>
+                {/* <td>Status</td> */}
+                <td>comments</td>
+                <td>Action</td>
                         </tr>
                       </thead>
                       <tbody>
-                        {reports.map((report, index) => (
+                        {filteredReports.map((report, index) => (
                           <tr key={report._id} className={selectedReports.has(report._id) ? 'table-active' : ''}>
                             <td>
                               <Form.Check
@@ -330,17 +595,14 @@ console.log(reports.reportItems);
                                 onChange={() => toggleReportSelection(report._id)}
                               />
                             </td>
-                            <td>{(currentPage - 1) * limit + index + 1}</td>
+                            <td>{formatDate(report.createdAt)}</td>
                             <td>
                               <div>
                                 {report.reportItems.slice(0, 2).map((item, i) => (
                                   <div key={i} className="d-flex align-items-center mb-1">
-                                    <img 
-                                      src={item.image} 
-                                      alt={item.name}
-                                      style={{ width: '30px', height: '30px', objectFit: 'cover', marginRight: '8px' }}
-                                    />
+                                   
                                     <span>{item.name} (x{item.quantity})</span>
+                                    <span>{item.quantity}</span>
                                   </div>
                                 ))}
                                 {report.reportItems.length > 2 && (
@@ -350,12 +612,22 @@ console.log(reports.reportItems);
                                 )}
                               </div>
                             </td>
+                            <td>{report.inStock}</td>
+                            <td>{formatCurrency(report.soldAt)}</td>
                             <td>{formatCurrency(report.sales)}</td>
                             <td>{formatCurrency(report.costs)}</td>
+                            <td>{formatCurrency(report.taxPrice)}</td>
+                            <td>{formatCurrency(report.grossProfit)}</td>
                             <td>
                               <Badge bg={parseFloat(report.netProfit) >= 0 ? "success" : "danger"}>
                                 {formatCurrency(report.netProfit)}
                               </Badge>
+                            </td>
+                            <td style={{ color: 'tomato' }}>{formatCurrency(report.depts)}</td>
+                            <td style={{ color: 'tomato' }}>
+                              
+                                {formatCurrency(report.expense)}
+
                             </td>
                             <td>
                               <Badge 
@@ -364,18 +636,21 @@ console.log(reports.reportItems);
                                   report.status === "HALF-PAID" ? "warning" : "danger"
                                 }
                               >
-                                {report.status}
+                                {report.comments}
                               </Badge>
                             </td>
                             <td>{report.paymentMethod}</td>
-                            <td>{formatDate(report.createdAt)}</td>
+                            
                             <td>
-                             <Button
-                        variant="info"
-                        onClick={() => console.log("Wait")}
-                      >
-                        Details
-                      </Button>
+                              <Button
+                      type="button"
+                      variant="info"
+                      onClick={() => {
+                        navigate(`/report/${report._id}`);
+                      }}
+                    >
+                      Details
+                    </Button>
                             </td>
                           </tr>
                         ))}
@@ -444,4 +719,4 @@ console.log(reports.reportItems);
   );
 };
 
-export default Report;
+export default ReportsList;
