@@ -610,11 +610,7 @@ const Report = () => {
                                 )}
                               </div>
                             </td>
-                            <td> {report.reportItems.slice(0, 2).map((item, i) => (
-                                  <div key={i}>
-                                    <span>{item.quantity}</span>
-                                  </div>
-                                ))}</td>
+                            <td> {item.real}</td>
                             <td>{formatCurrency(report.soldAt)}</td>
                             <td>{formatCurrency(report.sales)}</td>
                             <td>{formatCurrency(report.costs)}</td>
