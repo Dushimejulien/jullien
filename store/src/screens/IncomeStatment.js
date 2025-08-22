@@ -8,7 +8,7 @@ import axios from 'axios';
 import { Store } from '../Store';
 import { useNavigate } from 'react-router-dom';
 
-const ReportsList = () => {
+const Report = () => {
   const navigate = useNavigate()
   const { state,  } = useContext(Store);
   const {userInfo}=state
@@ -719,4 +719,4 @@ const ReportsList = () => {
   );
 };
 
-export default ReportsList;
+export default Report;
