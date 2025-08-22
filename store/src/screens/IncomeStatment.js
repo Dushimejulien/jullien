@@ -571,11 +571,11 @@ const Report = () => {
                 <th>Date</th>
                 <th>Name</th>
                 <th>Quantity</th>
-                <th>Sold at</th>
+                 <th>costs</th>
+                <th>Sold/unit</th>
                 <th>sales</th>
-                <th>costs</th>
-                <th>taxes</th>
                 <th>Gross profit</th>
+                 <th>taxes</th>
                 <th>Net profit</th>
                 <th>Depts</th>
                 <th>Expense</th>
@@ -611,11 +611,11 @@ const Report = () => {
                               </div>
                             </td>
                             <td> {report.real}</td>
+                            <td>{formatCurrency(report.costs)}</td>
                             <td>{formatCurrency(report.soldAt)}</td>
                             <td>{formatCurrency(report.sales)}</td>
-                            <td>{formatCurrency(report.costs)}</td>
-                            <td>{formatCurrency(report.taxPrice)}</td>
                             <td>{formatCurrency(report.grossProfit)}</td>
+                            <td>{formatCurrency(report.taxPrice)}</td>
                             <td>
                               <Badge bg={parseFloat(report.netProfit) >= 0 ? "success" : "danger"}>
                                 {formatCurrency(report.netProfit)}
