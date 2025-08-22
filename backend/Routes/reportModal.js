@@ -402,3 +402,85 @@ reportRouter.put(
       report.grossProfit = report.sales - report.igice;
       report.taxPrice = report.grossProfit * 0.18;
       report.createdAt = Date.now();
+      report.netProfit = report.grossProfit - report.taxPrice;
+      report.reportItems = req.body.reportItems.map((x) => ({
+        ...x,
+        product: x._id,
+      }));
+
+      const updatedReport = await report.save();
+      res.send({ message: "Report updated!", report: updatedReport });
+    }
+  })
+);
+
+reportRouter.put(
+  "/:id",
+  isAuth,
+  expressAsyncHandler(async (req, res) => {
+    const report = await Report.findById(req.params.id);
+
+    if (report && report.depts && !report.soldAt) {
+      report.soldAt = report.depts / report.real;
+      report.paymentMethod = report.paymentMethod;
+      report.comments = report.comments;
+      report.sales = report.depts;
+
+      if (report.igice !== 0) {
+        report.depts = report.depts - report.igice;
+      } else {
+        report.depts = report.depts * 0;
+      }
+      report.costs = report.costs;
+      report.grossProfit = report.sales - report.costs;
+      report.taxPrice = report.grossProfit * 0.18;
+      report.createdAt = Date.now();
+      report.netProfit = report.grossProfit - report.taxPrice;
+      report.reportItems = req.body.reportItems.map((x) => ({
+        ...x,
+        product: x._id,
+      }));
+      const updatedReport = await report.save();
+      res.send({ message: "Report updated!", report: updatedReport });
+    } else if (report && report.depts && report.soldAt) {
+      report.soldAt = report.soldAt;
+      report.ibyangiritse = report.ibyangiritse;
+      report.paymentMethod = report.paymentMethod;
+      report.comments = report.comments;
+      report.sales = report.depts + report.sales;
+      if (report.igice !== 0) {
+        report.depts = report.depts - report.igice;
+      } else {
+        report.depts = report.depts * 0;
+      }
+      report.costs = report.costs;
+      report.grossProfit = report.sales - report.costs;
+      report.taxPrice = report.grossProfit * 0.18;
+      report.createdAt = Date.now();
+      report.netProfit = report.grossProfit - report.taxPrice;
+      report.reportItems = req.body.reportItems.map((x) => ({
+        ...x,
+        product: x._id,
+      }));
+      const updatedReport = await report.save();
+      res.send({ message: "Report updated!", report: updatedReport });
+    } else {
+      res.status(404).send({ message: "Report not found" });
+    }
+  })
+);
+reportRouter.get(
+  "/:id",
+  isAuth,
+
+  expressAsyncHandler(async (req, res) => {
+    const report = await Report.findById(req.params.id);
+    if (report) {
+      res.send(report);
+    } else {
+      res.status(404).send({ message: "Report not found" });
+    }
+  })
+);
+
+export default reportRouter;
