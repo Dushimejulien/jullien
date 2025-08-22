@@ -610,7 +610,7 @@ const Report = () => {
                                 )}
                               </div>
                             </td>
-                            <td> {item.real}</td>
+                            <td> {report.real}</td>
                             <td>{formatCurrency(report.soldAt)}</td>
                             <td>{formatCurrency(report.sales)}</td>
                             <td>{formatCurrency(report.costs)}</td>
