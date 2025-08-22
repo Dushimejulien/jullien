@@ -600,9 +600,7 @@ const Report = () => {
                               <div>
                                 {report.reportItems.slice(0, 2).map((item, i) => (
                                   <div key={i} className="d-flex align-items-center mb-1">
-                                   
-                                    <span>{item.name} (x{item.quantity})</span>
-                                    <span>{item.quantity}</span>
+                                    <span>{item.name}</span>
                                   </div>
                                 ))}
                                 {report.reportItems.length > 2 && (
@@ -612,7 +610,11 @@ const Report = () => {
                                 )}
                               </div>
                             </td>
-                            <td>{report.inStock}</td>
+                            <td> {report.reportItems.slice(0, 2).map((item, i) => (
+                                  <div key={i}>
+                                    <span>{item.quantity}</span>
+                                  </div>
+                                ))}</td>
                             <td>{formatCurrency(report.soldAt)}</td>
                             <td>{formatCurrency(report.sales)}</td>
                             <td>{formatCurrency(report.costs)}</td>
