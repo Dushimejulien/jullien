@@ -1,0 +1,201 @@
+:root {
+  /* Dynamic Orange Palette */
+  --primary-color: #ee860e;
+  --primary-hover: #f0831e;
+  --secondary-color: #f0831e;
+  --bg-body: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-navbar: rgba(255, 255, 255, 0.9);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-color: #e2e8f0;
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme='dark'] {
+  --bg-body: #020617;
+  --bg-card: #1e293b;
+  --bg-navbar: rgba(2, 6, 23, 0.9);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-color: #334155;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--bg-body);
+  color: var(--text-primary);
+  transition: var(--transition);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+.site-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: var(--transition);
+}
+
+/* Wide Container for Alibaba Feel */
+.container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+  max-width: 1600px !important;
+  width: 95%;
+}
+
+main {
+  flex: 1;
+  padding-bottom: 3rem;
+  transition: var(--transition);
+}
+
+/* Sidebar & Drawer Logic */
+.side-navbar {
+  width: 280px;
+  background-color: var(--bg-card);
+  border-right: 1px solid var(--border-color);
+  z-index: 1050;
+  position: fixed;
+  left: -280px;
+  height: 100vh;
+  top: 0;
+  transition: var(--transition);
+  box-shadow: var(--shadow-lg);
+}
+
+.side-navbar.active-nav {
+  left: 0;
+}
+
+.active-cont {
+  margin-left: 280px;
+}
+
+@media (max-width: 991.98px) {
+  .active-cont {
+    margin-left: 0;
+  }
+}
+
+/* Component Styling */
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-img-top {
+  padding: 0.75rem;
+  height: 160px;
+  object-fit: contain;
+  background: white;
+  transition: var(--transition);
+}
+
+.product-card .card-title {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  transition: var(--transition);
+}
+
+.product-card:hover .card-title {
+  color: var(--primary-color);
+}
+
+.navbar {
+  backdrop-filter: blur(12px);
+  background-color: var(--bg-navbar) !important;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.8rem 0;
+  z-index: 1100;
+}
+
+.btn-primary {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  border-radius: 2rem;
+  padding: 0.6rem 1.5rem;
+  font-weight: 600;
+  box-shadow: 0 4px 6px -1px rgba(238, 134, 14, 0.3);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(238, 134, 14, 0.4);
+}
+
+.pagination .btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+/* Gradient Text for Headlines */
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary-color), #f97316);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-body);
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+@media (max-width: 767.98px) {
+  .search-filter-col {
+    display: none; /* Hide static filters on mobile to favor the sidebar and save space */
+  }
+}
+
+.product-card .card-body {
+  padding: 0.75rem;
+}
+
+.product-card .card-title {
+  font-size: 0.875rem;
+  height: 2.8rem;
+}
+
+.smallest-text {
+  font-size: 0.75rem;
+}
+
+.category-section h3 {
+  letter-spacing: -0.02em;
+}
+
+.category-section .btn-link:hover {
+  text-decoration: underline !important;
+}

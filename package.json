@@ -1,0 +1,26 @@
+{
+  "name": "rgsl",
+  "version": "1.0.0",
+  "description": "1. introduction\r 2. install tools\r 3. create react app\r 4. create git Repository",
+  "main": "index.js",
+  "scripts": {
+    "build": "cd backend && npm install && cd ../store && npm install && npm run build",
+    "start": "node backend/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "git+https://github.com/2ombe/amazona.git",
+  "author": "Tuombe <jtuombe@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/2ombe/amazona/issues"
+  },
+  "homepage": "https://github.com/2ombe/amazona#readme",
+  "dependencies": {
+    "@react-google-maps/api": "2.7.0",
+    "@testing-library/jest-dom": "5.16.1",
+    "react-helmet-async": "1.2.2",
+    "react-router-bootstrap": "0.26.0",
+    "react-router-dom": "6.2.1",
+    "react-scripts": "^5.0.1"
+  }
+}
