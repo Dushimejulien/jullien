@@ -1,7 +1,16 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { Card, Container, Table, Spinner, Alert, Badge } from 'react-bootstrap';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
+import { Card, Container, Table, Spinner, Alert, Badge, Button, Row, Col } from 'react-bootstrap';
 import axios from 'axios';
 import { Store } from '../Store';
+
+const PERIODS = [
+  { key: "all",       label: "📋 All Time" },
+  { key: "daily",     label: "📅 Today" },
+  { key: "weekly",    label: "📆 This Week" },
+  { key: "monthly",   label: "🗓 This Month" },
+  { key: "quarterly", label: "📊 This Quarter" },
+  { key: "yearly",    label: "🗃 This Year" },
+];
 
 const MonthlyExpense = () => {
   const [expenses, setExpenses] = useState([]);
@@ -9,6 +18,7 @@ const MonthlyExpense = () => {
   const [error, setError] = useState('');
   const { state } = useContext(Store);
   const { userInfo } = state;
+  const [activePeriod, setActivePeriod] = useState("all");
 
   useEffect(() => {
     const fetchExpensesByMonth = async () => {
@@ -26,12 +36,78 @@ const MonthlyExpense = () => {
     fetchExpensesByMonth();
   }, [userInfo]);
 
+  // Filter rows by selected period
+  const filtered = useMemo(() => {
+    if (activePeriod === "all") return expenses;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentQ = Math.floor(now.getMonth() / 3);
+
+    return expenses.filter((e) => {
+      const { year, month } = e._id;
+      switch (activePeriod) {
+        case "daily":
+        case "weekly":
+        case "monthly": return year === currentYear && month === currentMonth;
+        case "quarterly": {
+          const q = Math.floor((month - 1) / 3);
+          return year === currentYear && q === currentQ;
+        }
+        case "yearly":  return year === currentYear;
+        default:        return true;
+      }
+    });
+  }, [expenses, activePeriod]);
+
+  const periodTotal = filtered.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
+  const fmt = (v) => `${(v || 0).toLocaleString()} RWF`;
+
   return (
     <Container className="py-4">
-      <div className="mb-4">
+      <div className="mb-3">
         <h1 className="text-gradient">Expense Archives</h1>
         <p className="text-muted text-uppercase small ls-wide">Monthly Financial Outflow Summary</p>
       </div>
+
+      {/* Period toggles */}
+      <div className="d-flex flex-wrap gap-2 mb-4">
+        {PERIODS.map((p) => (
+          <Button
+            key={p.key}
+            variant={activePeriod === p.key ? "primary" : "outline-secondary"}
+            className="rounded-pill fw-bold px-4"
+            onClick={() => setActivePeriod(p.key)}
+          >
+            {p.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Summary cards */}
+      <Row className="mb-4 g-3">
+        <Col xs={6} md={4}>
+          <div className="rounded-3 p-3 shadow-sm text-white text-center"
+            style={{ background: "linear-gradient(135deg,#e74c3c,#922b21)" }}>
+            <div className="small opacity-75 mb-1">Period Total</div>
+            <div className="fs-4 fw-bold">{fmt(periodTotal)}</div>
+          </div>
+        </Col>
+        <Col xs={6} md={4}>
+          <div className="rounded-3 p-3 shadow-sm text-white text-center"
+            style={{ background: "linear-gradient(135deg,#1a73e8,#0d47a1)" }}>
+            <div className="small opacity-75 mb-1">Months Shown</div>
+            <div className="fs-4 fw-bold">{filtered.length}</div>
+          </div>
+        </Col>
+        <Col xs={6} md={4}>
+          <div className="rounded-3 p-3 shadow-sm text-white text-center"
+            style={{ background: "linear-gradient(135deg,#f39200,#b36800)" }}>
+            <div className="small opacity-75 mb-1">Avg per Month</div>
+            <div className="fs-4 fw-bold">{fmt(filtered.length ? Math.round(periodTotal / filtered.length) : 0)}</div>
+          </div>
+        </Col>
+      </Row>
 
       {loading ? (
         <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
@@ -47,27 +123,22 @@ const MonthlyExpense = () => {
               </tr>
             </thead>
             <tbody>
-              {expenses.map((expense) => (
-                <tr key={`${expense._id.year}-${expense._id.month}`}>
-                  <td className="ps-4">
-                     <div className="fw-bold fs-6">
-                       {getMonthName(expense._id.month)} {expense._id.year}
-                     </div>
-                     <div className="text-muted small">Tax Deductible Activity</div>
-                  </td>
-                  <td className="text-end pe-4">
-                    <Badge bg="danger" className="bg-opacity-10 text-danger border border-danger fs-6 px-3 py-2">
-                       {expense.totalAmount.toLocaleString()} RWF
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-              {expenses.length === 0 && (
-                <tr>
-                  <td colSpan="2" className="text-center py-5 text-muted">
-                    No historical expense data found for this period.
-                  </td>
-                </tr>
+              {filtered.length === 0 ? (
+                <tr><td colSpan="2" className="text-center py-5 text-muted">No expense data for this period.</td></tr>
+              ) : (
+                filtered.map((expense) => (
+                  <tr key={`${expense._id.year}-${expense._id.month}`}>
+                    <td className="ps-4">
+                      <div className="fw-bold fs-6">{getMonthName(expense._id.month)} {expense._id.year}</div>
+                      <div className="text-muted small">Tax Deductible Activity</div>
+                    </td>
+                    <td className="text-end pe-4">
+                      <Badge bg="danger" className="bg-opacity-10 text-danger border border-danger fs-6 px-3 py-2">
+                        {expense.totalAmount.toLocaleString()} RWF
+                      </Badge>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </Table>
