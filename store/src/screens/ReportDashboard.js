@@ -101,20 +101,37 @@ export default function ReportDashboard() {
       const dates = getPeriodDates(activePeriod);
       if (dates) params.append("dateFilter", JSON.stringify(dates));
 
-      const { data } = await axios.get(`/api/report/search?${params}`, {
-        headers: { Authorization: `Bearer ${userInfo.token}` },
+      const [reportRes, expRes] = await Promise.all([
+        axios.get(`/api/report/search?${params}`, { headers: { Authorization: `Bearer ${userInfo.token}` } }),
+        axios.get('/api/expense', { headers: { Authorization: `Bearer ${userInfo.token}` } })
+      ]);
+
+      const data = reportRes.data;
+      const allExpenses = expRes.data || [];
+      
+      const periodExpenses = allExpenses.filter(e => {
+        if (!dates) return true;
+        const d = new Date(e.createdAt);
+        return d >= new Date(dates.startDate) && d <= new Date(dates.endDate);
       });
+      const totalPeriodExpenses = periodExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
       const totals = (data.data || []).reduce(
         (acc, r) => ({
           sales: acc.sales + (r.sales || 0),
-          netProfit: acc.netProfit + Number(r.netProfit || 0),
+          grossProfit: acc.grossProfit + Number(r.grossProfit || 0),
           depts: acc.depts + (r.depts || 0),
           count: acc.count + 1,
         }),
-        { sales: 0, netProfit: 0, depts: 0, count: 0 }
+        { sales: 0, grossProfit: 0, depts: 0, count: 0 }
       );
-      setPeriodStats(totals);
+      
+      setPeriodStats({
+        sales: totals.sales,
+        netProfit: totals.grossProfit - totalPeriodExpenses,
+        depts: totals.depts,
+        count: totals.count
+      });
     } catch {
       // fail silently
     }
@@ -136,14 +153,14 @@ export default function ReportDashboard() {
 
   const stats = summary.orders?.[0] || {};
   const totalOperationalExpenses = expenses.reduce((acc, curr) => acc + curr.totalAmount, 0);
-  const actualNetProfit = (stats.netProfit || 0) - totalOperationalExpenses;
+  const actualNetProfit = (stats.grossProfit || 0) - totalOperationalExpenses;
 
   const trendData = (summary.monthlyOrders || []).map((m) => {
     const matchingExpense = expenses.find(
       (e) => `${e._id.year}-${String(e._id.month).padStart(2, "0")}` === m._id
     );
     const expenseAmount = matchingExpense ? matchingExpense.totalAmount : 0;
-    return { month: m._id, sales: m.sales, actualProfit: m.grossProfit * 0.82 - expenseAmount };
+    return { month: m._id, sales: m.sales, actualProfit: m.grossProfit - expenseAmount };
   });
 
   return (

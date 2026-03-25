@@ -83,24 +83,45 @@ const IncomeStatement = () => {
       const dates = getPeriodDates(activePeriod);
       if (dates) params.append('dateFilter', JSON.stringify(dates));
 
-      const { data } = await axios.get(`/api/report/search?${params}`, {
-        headers: { Authorization: `Bearer ${userInfo.token}` }
+      const [reportRes, expRes] = await Promise.all([
+        axios.get(`/api/report/search?${params}`, {
+          headers: { Authorization: `Bearer ${userInfo.token}` }
+        }),
+        axios.get('/api/expense', {
+          headers: { Authorization: `Bearer ${userInfo.token}` }
+        })
+      ]);
+
+      const data = reportRes.data;
+      const allExpenses = expRes.data || [];
+      
+      // Filter expenses for this period
+      const periodExpenses = allExpenses.filter(e => {
+        if (!dates) return true;
+        const d = new Date(e.createdAt);
+        return d >= new Date(dates.startDate) && d <= new Date(dates.endDate);
       });
+      const totalPeriodExpenses = periodExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
       setReports(data.data);
       setTotalPages(data.totalPages);
       setTotalCount(data.totalCount);
 
-      // Compute period totals from returned records
+      // Compute period totals: Gross Profit - Expenses = Net Profit
       const totals = data.data.reduce(
         (acc, r) => ({
           sales: acc.sales + (r.sales || 0),
-          netProfit: acc.netProfit + Number(r.netProfit || 0),
+          grossProfit: acc.grossProfit + Number(r.grossProfit || 0),
           depts: acc.depts + (r.depts || 0),
         }),
-        { sales: 0, netProfit: 0, depts: 0 }
+        { sales: 0, grossProfit: 0, depts: 0 }
       );
-      setPeriodTotals(totals);
+      
+      setPeriodTotals({
+        sales: totals.sales,
+        netProfit: totals.grossProfit - totalPeriodExpenses,
+        depts: totals.depts
+      });
     } catch {
       setError('Failed to fetch reports. Please try again.');
     } finally {
