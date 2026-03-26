@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useReducer } from "react";
+import React, { useContext, useEffect, useReducer, useState } from "react";
 import Chart from "react-google-charts";
 import axios from "axios";
 import { Store } from "../Store";
@@ -8,52 +8,122 @@ import MessageBox from "../components/MessageBox";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 import Card from "react-bootstrap/Card";
+import Button from "react-bootstrap/Button";
+import ButtonGroup from "react-bootstrap/ButtonGroup";
+import Table from "react-bootstrap/Table";
+import Pagination from "react-bootstrap/Pagination";
 
 const reducer = (state, action) => {
   switch (action.type) {
-    case "FETCH_REQUEST":
+    case "FETCH_SUMMARY_REQUEST":
       return { ...state, loading: true };
-    case "FETCH_SUCCESS":
+    case "FETCH_SUMMARY_SUCCESS":
       return {
         ...state,
         summary: action.payload,
         loading: false,
       };
-    case "FETCH_FAIL":
+    case "FETCH_SUMMARY_FAIL":
       return { ...state, loading: false, error: action.payload };
+    case "FETCH_REPORTS_REQUEST":
+      return { ...state, loadingReports: true };
+    case "FETCH_REPORTS_SUCCESS":
+      return {
+        ...state,
+        reports: action.payload.reports,
+        page: action.payload.page,
+        pages: action.payload.pages,
+        loadingReports: false,
+      };
+    case "FETCH_REPORTS_FAIL":
+      return { ...state, loadingReports: false, errorReports: action.payload };
+    case "SET_PAGE":
+      return { ...state, page: action.payload };
     default:
       return state;
   }
 };
+
 export default function DashboardScreen() {
-  const [{ loading, summary, error }, dispatch] = useReducer(reducer, {
+  const [
+    { loading, summary, error, loadingReports, reports, page, pages, errorReports },
+    dispatch,
+  ] = useReducer(reducer, {
     loading: true,
     error: "",
+    loadingReports: true,
+    reports: [],
+    page: 1,
+    pages: 1,
+    summary: {},
   });
+
   const { state } = useContext(Store);
   const { userInfo } = state;
+  const [period, setPeriod] = useState("daily");
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchSummary = async () => {
       try {
+        dispatch({ type: "FETCH_SUMMARY_REQUEST" });
         const { data } = await axios.get("/api/report/summary", {
           headers: { Authorization: `Bearer ${userInfo.token}` },
         });
-        console.log(data);
-        dispatch({ type: "FETCH_SUCCESS", payload: data });
+        dispatch({ type: "FETCH_SUMMARY_SUCCESS", payload: data });
       } catch (err) {
         dispatch({
-          type: "FETCH_FAIL",
+          type: "FETCH_SUMMARY_FAIL",
           payload: getError(err),
         });
       }
     };
-    fetchData();
+    fetchSummary();
   }, [userInfo]);
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        dispatch({ type: "FETCH_REPORTS_REQUEST" });
+        const { data } = await axios.get(`/api/report/all?page=${page}`, {
+          headers: { Authorization: `Bearer ${userInfo.token}` },
+        });
+        dispatch({ type: "FETCH_REPORTS_SUCCESS", payload: data });
+      } catch (err) {
+        dispatch({
+          type: "FETCH_REPORTS_FAIL",
+          payload: getError(err),
+        });
+      }
+    };
+    fetchReports();
+  }, [userInfo, page]);
+
+  const getChartData = (type) => {
+    if (!summary || !summary[`${period}Orders`]) return [["Date", type]];
+    return [
+      ["Date", type],
+      ...summary[`${period}Orders`].map((x) => [x._id, x[type === "Sales" ? "sales" : "grossProfit"]]),
+    ];
+  };
 
   return (
     <div>
-      <h1>Report Dashboard</h1>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h1>Report Dashboard</h1>
+        <ButtonGroup>
+          {["daily", "weekly", "monthly", "yearly"].map((p) => (
+            <Button
+              key={p}
+              variant={period === p ? "primary" : "outline-primary"}
+              onClick={() => setPeriod(p)}
+              className="text-capitalize"
+            >
+              {p}
+            </Button>
+          ))}
+        </ButtonGroup>
+      </div>
+
       {loading ? (
         <LoadingBox />
       ) : error ? (
@@ -61,310 +131,147 @@ export default function DashboardScreen() {
       ) : (
         <>
           <Row>
-            <Col md={4}>
-              <Card>
+            <Col md={3}>
+              <Card className="mb-3">
                 <Card.Body>
                   <Card.Title>
-                    {summary.users && summary.users[0]
-                      ? summary.users[0].numUsers
-                      : 0}
+                    {summary.users && summary.users[0] ? summary.users[0].numUsers : 0}
                   </Card.Title>
-                  <Card.Text> Users</Card.Text>
-                </Card.Body>
-              </Card>
-              <Card>
-                <Card.Body>
-                  <Card.Title>
-                    {summary.orders && summary.users[0]
-                      ? summary.orders[0].depts.toFixed(2)
-                      : 0}{" "}
-                    Rwf
-                  </Card.Title>
-                  <Card.Text> depts</Card.Text>
-                </Card.Body>
-              </Card>
-              
-            </Col>
-            <Col md={4}>
-              <Card>
-                <Card.Body>
-                  <Card.Title>
-                    {summary.orders && summary.users[0]
-                      ? summary.orders[0].numOrders
-                      : 0}
-                  </Card.Title>
-                  <Card.Text> total quantity sold</Card.Text>
-                </Card.Body>
-              </Card>
-              <Card>
-                <Card.Body>
-                  <Card.Title>
-                    {summary.orders && summary.users[0]
-                      ? summary.orders[0].totalCosts
-                      : 0}{" "}
-                    Rwf
-                  </Card.Title>
-                  <Card.Text> total Costs</Card.Text>
-                </Card.Body>
-              </Card>
-              <Card>
-                <Card.Body>
-                  <Card.Title>
-                    {summary.orders && summary.users[0]
-                      ? summary.orders[0].taxPrice.toFixed(2)
-                      : 0}{" "}
-                    Rwf
-                  </Card.Title>
-                  <Card.Text> tax Price</Card.Text>
+                  <Card.Text>Users</Card.Text>
                 </Card.Body>
               </Card>
             </Col>
-            <Col md={4}>
-              <Card>
+            <Col md={3}>
+              <Card className="mb-3">
                 <Card.Body>
                   <Card.Title>
-                    {summary.orders && summary.users[0]
-                      ? summary.orders[0].totalSales.toFixed(2)
-                      : 0}{" "}
-                    Rwf
+                    {summary.orders && summary.orders[0] ? summary.orders[0].totalSales.toFixed(2) : 0} Rwf
                   </Card.Title>
-                  <Card.Text> total Sales</Card.Text>
+                  <Card.Text>Total Sales</Card.Text>
                 </Card.Body>
               </Card>
-              <Card>
+            </Col>
+            <Col md={3}>
+              <Card className="mb-3">
                 <Card.Body>
                   <Card.Title>
-                    {summary.orders && summary.users[0]
-                      ? summary.orders[0].grossProfit.toFixed(2)
-                      : 0}{" "}
-                    Rwf
+                    {summary.orders && summary.orders[0] ? summary.orders[0].grossProfit.toFixed(2) : 0} Rwf
                   </Card.Title>
-                  <Card.Text> Gross profit</Card.Text>
+                  <Card.Text>Gross Profit</Card.Text>
                 </Card.Body>
               </Card>
-              <Card>
+            </Col>
+            <Col md={3}>
+              <Card className="mb-3">
                 <Card.Body>
                   <Card.Title>
-                    {summary.orders[0].grossProfit.toFixed(2) -
-                      summary.orders[0].taxPrice.toFixed(2)}
-                    Rwf
+                    {summary.orders && summary.orders[0] ? summary.orders[0].depts.toFixed(2) : 0} Rwf
                   </Card.Title>
-                  <Card.Text> net Profit</Card.Text>
+                  <Card.Text>Debts</Card.Text>
                 </Card.Body>
               </Card>
             </Col>
           </Row>
-           <Row>
-            <Col md={4}></Col>
+
+          <Row>
+            <Col md={6}>
+              <div className="my-3">
+                <h2 className="text-capitalize">{period} Sales</h2>
+                {summary[`${period}Orders`] && summary[`${period}Orders`].length === 0 ? (
+                  <MessageBox>No Sales for this period</MessageBox>
+                ) : (
+                  <Chart
+                    width="100%"
+                    height="300px"
+                    chartType="AreaChart"
+                    loader={<div>Loading Chart...</div>}
+                    data={getChartData("Sales")}
+                  ></Chart>
+                )}
+              </div>
+            </Col>
+            <Col md={6}>
+              <div className="my-3">
+                <h2 className="text-capitalize">{period} Gross Profit</h2>
+                {summary[`${period}Orders`] && summary[`${period}Orders`].length === 0 ? (
+                  <MessageBox>No Profit for this period</MessageBox>
+                ) : (
+                  <Chart
+                    width="100%"
+                    height="300px"
+                    chartType="AreaChart"
+                    loader={<div>Loading Chart...</div>}
+                    data={getChartData("Gross Profit")}
+                  ></Chart>
+                )}
+              </div>
+            </Col>
           </Row>
-          
-          <div className="my-3">
-            <h2>yearly Sales</h2>
-            {!summary.yearlyOrders ? (
-              <MessageBox>No Sale</MessageBox>
-            ) : (
-              <>
-                {summary.yearlyOrders.map((item) => {
-                  return (
-                    <Row>
-                      <Col md={6}>
-                        <Card>
-                          <Card.Body>{item.sales} Rwf</Card.Body>
-                        </Card>
-                      </Col>
-                    </Row>
-                  );
-                })}
-                <Chart
-                  width="100%"
-                  height="400px"
-                  chartType="AreaChart"
-                  loader={<div>Loading Chart...</div>}
-                  data={[
-                    ["Date", "Sales"],
-                    ...summary.yearlyOrders.map((x) => [x._id, x.sales]),
-                  ]}
-                ></Chart>
-                
-                
-              </>
-            )}
-          </div>
-          <div className="my-3">
-            <h2>yearly gross profit</h2>
-            {!summary.yearlyOrders ? (
-              <MessageBox>No gross profit</MessageBox>
-            ) : (
-              <>
-                {summary.yearlyOrders.map((item) => {
-                  return (
-                    <Row>
-                      <Col md={6}>
-                        <Card>
-                          <Card.Body>{item.grossProfit} Rwf</Card.Body>
-                        </Card>
-                      </Col>
-                    </Row>
-                  );
-                })}
-                <Chart
-                  width="100%"
-                  height="400px"
-                  chartType="AreaChart"
-                  loader={<div>Loading Chart...</div>}
-                  data={[
-                    ["Date", "grossProfit"],
-                    ...summary.yearlyOrders.map((x) => [x._id, x.grossProfit]),
-                  ]}
-                ></Chart>
-                
-                
-              </>
-            )}
-          </div>
-          <div className="my-3">
-            <h2>Monthy Sales</h2>
-            {!summary.monthlyOrders ? (
-              <MessageBox>No Sale</MessageBox>
-            ) : (
-              <>
-                {summary.monthlyOrders.map((item) => {
-                  return (
-                    <Row>
-                      <Col md={6}>
-                        <Card>
-                          <Card.Body>{item.sales} Rwf</Card.Body>
-                        </Card>
-                      </Col>
-                    </Row>
-                  );
-                })}
-                <Chart
-                  width="100%"
-                  height="400px"
-                  chartType="AreaChart"
-                  loader={<div>Loading Chart...</div>}
-                  data={[
-                    ["Date", "Sales"],
-                    ...summary.monthlyOrders.map((x) => [x._id, x.sales]),
-                  ]}
-                ></Chart>
-                
-                
-              </>
-            )}
-          </div>
-          <div className="my-3">
-            <h2>Monthy gross proft</h2>
-            {!summary.monthlyOrders ? (
-              <MessageBox>No profit</MessageBox>
-            ) : (
-              <>
-                {summary.monthlyOrders.map((item) => {
-                  return (
-                    <Row>
-                      <Col md={6}>
-                        <Card>
-                          <Card.Body>{item.grossProfit} Rwf</Card.Body>
-                        </Card>
-                      </Col>
-                    </Row>
-                  );
-                })}
-                <Chart
-                  width="100%"
-                  height="400px"
-                  chartType="AreaChart"
-                  loader={<div>Loading Chart...</div>}
-                  data={[
-                    ["Date", "Sales"],
-                    ...summary.monthlyOrders.map((x) => [x._id, x.grossProfit]),
-                  ]}
-                ></Chart>
-                
-                
-              </>
-            )}
-          </div>
-          <div className="my-3">
-            <h2>Dairly Sales</h2>
-            {summary.dailyOrders.length === 0 ? (
-              <MessageBox>No Sale</MessageBox>
-            ) : (
-              <>
-                {summary.dailyOrders.map((item) => {
-                  return (
-                    <Row>
-                      <Col md={6}>
-                        <Card>
-                          <Card.Body>{item.sales} Rwf</Card.Body>
-                        </Card>
-                      </Col>
-                    </Row>
-                  );
-                })}
-                <Chart
-                  width="100%"
-                  height="400px"
-                  chartType="AreaChart"
-                  loader={<div>Loading Chart...</div>}
-                  data={[
-                    ["Date", "Sales"],
-                    ...summary.dailyOrders.map((x) => [x._id, x.sales]),
-                  ]}
-                ></Chart>
-                
-                
-              </>
-            )}
-          </div>
-          <div className="my-3">
-            <h2>Dairly gross profit</h2>
-            {summary.dailyOrders.length === 0 ? (
-              <MessageBox>No gross profit</MessageBox>
-            ) : (
-              <>
-                {summary.dailyOrders.map((item) => {
-                  return (
-                    <Row>
-                      <Col md={6}>
-                        <Card>
-                          <Card.Body>{item.grossProfit} Rwf</Card.Body>
-                        </Card>
-                      </Col>
-                    </Row>
-                  );
-                })}
-                <Chart
-                  width="100%"
-                  height="400px"
-                  chartType="AreaChart"
-                  loader={<div>Loading Chart...</div>}
-                  data={[
-                    ["Date", "Sales"],
-                    ...summary.dailyOrders.map((x) => [x._id, x.grossProfit]),
-                  ]}
-                ></Chart>
-                
-                
-              </>
-            )}
-          </div>
-          <div className="my-3">
+
+          <div className="my-4">
             <h2>Categories</h2>
-            {summary.productCategories.length === 0 ? (
+            {summary.productCategories && summary.productCategories.length === 0 ? (
               <MessageBox>No Category</MessageBox>
             ) : (
               <Chart
                 width="100%"
-                height="400px"
+                height="300px"
                 chartType="PieChart"
                 loader={<div>Loading Chart...</div>}
                 data={[
                   ["Category", "Products"],
-                  ...summary.productCategories.map((x) => [x._id, x.count]),
+                  ...(summary.productCategories || []).map((x) => [x._id, x.count]),
                 ]}
               ></Chart>
+            )}
+          </div>
+
+          <div className="my-4">
+            <h2>Recent Transactions</h2>
+            {loadingReports ? (
+              <LoadingBox />
+            ) : errorReports ? (
+              <MessageBox variant="danger">{errorReports}</MessageBox>
+            ) : (
+              <>
+                <Table striped bordered hover responsive>
+                  <thead>
+                    <tr>
+                      <th>DATE</th>
+                      <th>COSTOMER/GIVEN TO</th>
+                      <th>SALES</th>
+                      <th>COSTS</th>
+                      <th>GROSS PROFIT</th>
+                      <th>DEBTS</th>
+                      <th>PAYMENT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reports.map((report) => (
+                      <tr key={report._id}>
+                        <td>{new Date(report.createdAt).toLocaleDateString()}</td>
+                        <td>{report.givenTo || "N/A"}</td>
+                        <td>{report.sales.toFixed(2)}</td>
+                        <td>{report.costs.toFixed(2)}</td>
+                        <td>{report.grossProfit.toFixed(2)}</td>
+                        <td>{report.depts.toFixed(2)}</td>
+                        <td>{report.paymentMethod}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+                <Pagination>
+                  {[...Array(pages).keys()].map((x) => (
+                    <Pagination.Item
+                      key={x + 1}
+                      active={x + 1 === page}
+                      onClick={() => dispatch({ type: "SET_PAGE", payload: x + 1 })}
+                    >
+                      {x + 1}
+                    </Pagination.Item>
+                  ))}
+                </Pagination>
+              </>
             )}
           </div>
         </>
@@ -372,23 +279,3 @@ export default function DashboardScreen() {
     </div>
   );
 }
-// const monthlyOrders = summary.dailyOrders.reduce((acc, x) => {
-//   const [year, month] = x._id.split("-");
-//   const key = `${year}-${month}`;
-//   if (acc[key]) {
-//     acc[key].sales += x.sales;
-//   } else {
-//     acc[key] = { _id: key, sales: x.sales };
-//   }
-//   return acc;
-// }, {});
-
-// const monthlyOrderData = Object.values(monthlyOrders).map((x) => [x._id, x.sales]);
-
-// <Chart
-//   width="100%"
-//   height="400px"
-//   chartType="AreaChart"
-//   loader={<div>Loading Chart...</div>}
-//   data={[["Date", "Sales"], ...monthlyOrderData]}
-// ></Chart>
