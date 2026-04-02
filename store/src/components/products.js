@@ -61,12 +61,12 @@ function Product(props) {
             <Button variant="light" disabled className="rounded-pill">Out of stock</Button>
           ) : userInfo && (userInfo.isSeller || userInfo.isAdmin) ? (
             <Button
-              onClick={() => navigate(`/product/${product.slug}`)}
+              onClick={() => navigate(`/admin/product/${product._id}`)}
               variant="outline-primary"
               className="rounded-pill"
             >
-              <i className="fas fa-info-circle me-2"></i>
-              Product details
+              <i className="fas fa-edit me-2"></i>
+              Edit Product
             </Button>
           ) : (
             <Button

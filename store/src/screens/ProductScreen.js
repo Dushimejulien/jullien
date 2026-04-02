@@ -139,9 +139,19 @@ const ProductScreen = () => {
                     <span>Cost Price:</span>
                     <strong>{product.costPrice.toLocaleString()} RWF</strong>
                   </div>
-                  <div className="d-flex justify-content-between">
+                  <div className="d-flex justify-content-between mb-3">
                     <span>Potential Margin:</span>
                     <strong>{(product.price - product.costPrice).toLocaleString()} RWF</strong>
+                  </div>
+                  <div className="d-grid mt-3">
+                    <Button 
+                      variant="outline-info" 
+                      onClick={() => navigate(`/admin/product/${product._id}`)}
+                      className="rounded-pill"
+                    >
+                      <i className="fas fa-edit me-2"></i>
+                      Edit Product Details
+                    </Button>
                   </div>
                 </Card.Body>
               </Card>
