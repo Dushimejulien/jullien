@@ -128,7 +128,7 @@ reportRouter.delete(
     try {
       const report = await Report.findById(reportId)
       if(report){
-        await report.remove()
+        await report.deleteOne()
         res.send({message:"Report deleted"})
       }else{
         res.status(404).send({ message: "Report not found" });
