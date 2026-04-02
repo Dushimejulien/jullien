@@ -1,6 +1,6 @@
 import express from"express";
 import expressAsyncHandler from"express-async-handler";
-import { isAdmin, isAuth, suAdmin } from"../utils.js";
+import { isAdmin, isAuth, suAdmin, isSellerOrAdmin } from"../utils.js";
 import Expense from"../models/expense.js";
 
 const expenseRouter = express.Router();
@@ -69,7 +69,7 @@ expenseRouter.get('/month', async (req, res) => {
 expenseRouter.get(
   "/",
   isAuth,
-  isAdmin || suAdmin,
+  isSellerOrAdmin,
   expressAsyncHandler(async (req, res) => {
     const report = await Expense.find();
     res.send(report);
@@ -79,7 +79,7 @@ expenseRouter.get(
 expenseRouter.get(
   "/:id",
   isAuth,
-  isAdmin || suAdmin,
+  isSellerOrAdmin,
   expressAsyncHandler(async (req, res) => {
     const report = await Expense.findById(req.params.id);
     if (report) {

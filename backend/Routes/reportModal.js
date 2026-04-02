@@ -1,6 +1,6 @@
 import express, { query } from "express";
 import expressAsyncHandler from "express-async-handler";
-import { isAdmin, isAuth, suAdmin } from "../utils.js";
+import { isAdmin, isAuth, suAdmin, isSellerOrAdmin } from "../utils.js";
 import Report from "../models/reportModal.js";
 import User from "../models/userModal.js";
 import Product from "../models/productModel.js";
@@ -224,7 +224,7 @@ reportRouter.get(
   })
 );
 
-reportRouter.get("/search", async (req, res) => {
+reportRouter.get("/search", isAuth, isSellerOrAdmin, async (req, res) => {
   try {
     const { key, page = 1, limit = 10, depts, dateFilter, year, month, day } = req.query;
     const skip = (page - 1) * limit;
