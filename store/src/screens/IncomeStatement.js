@@ -233,59 +233,75 @@ const IncomeStatement = () => {
             <thead className="bg-light">
               <tr className="small text-uppercase ls-wide text-muted">
                 <th className="ps-4">Date</th>
-                <th>Reconciled Items</th>
-                <th className="text-end">Revenue</th>
+                <th>Name</th>
+                <th>Quantity</th>
+                <th className="text-end">Costs</th>
+                <th className="text-end">Sold/unit</th>
+                <th className="text-end">Sales</th>
+                <th className="text-end">Gross Profit</th>
+                <th className="text-end">Taxes</th>
                 <th className="text-end">Net Profit</th>
-                <th className="text-end">Debt Status</th>
+                <th className="text-end">Depts</th>
+                <th className="text-end">Expense</th>
+                <th className="text-center">Status</th>
+                <th>Comments</th>
                 <th className="text-center">Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="6" className="text-center py-5"><Spinner animation="border" variant="primary" /></td></tr>
+                <tr><td colSpan="14" className="text-center py-5"><Spinner animation="border" variant="primary" /></td></tr>
               ) : reports.length === 0 ? (
-                <tr><td colSpan="6" className="text-center py-5 text-muted">No records found for this period.</td></tr>
+                <tr><td colSpan="14" className="text-center py-5 text-muted">No records found for this period.</td></tr>
               ) : (
                 reports.map((report) => (
                   <tr key={report._id}>
-                    <td className="ps-4">
-                      <div className="fw-bold">{formatDate(report.createdAt)}</div>
-                      <div className="small text-muted">{report.paymentMethod}</div>
-                    </td>
+                    <td className="ps-4 fw-bold">{formatDate(report.createdAt)}</td>
                     <td>
-                      <div className="d-flex flex-wrap gap-1" style={{ maxWidth: '300px' }}>
-                        {report.reportItems.slice(0, 3).map((item, i) => (
+                      <div className="d-flex flex-wrap gap-1" style={{ maxWidth: '200px' }}>
+                        {report.reportItems.slice(0, 2).map((item, i) => (
                           <Badge key={i} bg="light" text="dark" className="border fw-normal">{item.name}</Badge>
                         ))}
-                        {report.reportItems.length > 3 && (
-                          <Badge bg="light" text="muted" className="border fw-normal">+{report.reportItems.length - 3} more</Badge>
+                        {report.reportItems.length > 2 && (
+                          <Badge bg="light" text="muted" className="border fw-normal">+{report.reportItems.length - 2} more</Badge>
                         )}
                       </div>
                     </td>
+                    <td>{report.real}</td>
+                    <td className="text-end">{fmt(report.costs)}</td>
+                    <td className="text-end">{fmt(report.soldAt)}</td>
                     <td className="text-end fw-bold">{fmt(report.sales)}</td>
+                    <td className="text-end">{fmt(report.grossProfit)}</td>
+                    <td className="text-end">{fmt(report.taxPrice)}</td>
                     <td className="text-end">
-                      <Badge bg="success" className="bg-opacity-10 text-success border border-success px-3">
+                      <Badge bg={parseFloat(report.netProfit) >= 0 ? "success" : "danger"} className={`bg-opacity-10 border px-3 ${parseFloat(report.netProfit) >= 0 ? "text-success border-success" : "text-danger border-danger"}`}>
                         {fmt(report.netProfit)}
                       </Badge>
                     </td>
                     <td className="text-end">
-                      {report.depts > 0 ? (
-                        <span className="text-danger small fw-bold">
-                          <i className="fas fa-exclamation-circle me-1"></i>{fmt(report.depts)}
-                        </span>
-                      ) : (
-                        <span className="text-success small">
-                          <i className="fas fa-check-circle me-1"></i>Cleared
-                        </span>
-                      )}
+                      <span className={report.depts > 0 ? "text-danger small fw-bold" : "text-success small"}>
+                        {fmt(report.depts)}
+                      </span>
                     </td>
+                    <td className="text-end text-danger">{fmt(report.expense)}</td>
+                    <td className="text-center">
+                      <Badge 
+                        bg={
+                          report.status === "PAID" ? "success" : 
+                          report.status === "HALF-PAID" ? "warning" : "danger"
+                        }
+                      >
+                        {report.comments || report.status || "N/A"}
+                      </Badge>
+                    </td>
+                    <td className="small text-muted">{report.paymentMethod}</td>
                     <td className="text-center">
                       <Button
                         variant="link"
                         className="p-0 text-primary fw-bold text-decoration-none"
                         onClick={() => navigate(`/report/${report._id}`)}
                       >
-                        Audit
+                        Details
                       </Button>
                     </td>
                   </tr>
