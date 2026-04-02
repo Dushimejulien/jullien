@@ -53,6 +53,7 @@ export default function ProductEditScreen() {
   const [costPrice, setCostPrice] = useState("");
   const [category, setCategory] = useState("");
   const [countInStock, setCountInStock] = useState("");
+  const [addStock, setAddStock] = useState("");
   const [brand, setBrand] = useState("");
   const [description, setDescription] = useState("");
 
@@ -84,7 +85,7 @@ export default function ProductEditScreen() {
       dispatch({ type: "UPDATE_REQUEST" });
       await axios.put(
         `/api/products/${productId}`,
-        { _id: productId, name, slug, price, costPrice, image, category, brand, countInStock, description },
+        { _id: productId, name, slug, price, costPrice, image, category, brand, countInStock: Number(countInStock) + Number(addStock || 0), description },
         { headers: { Authorization: `Bearer ${userInfo.token}` } }
       );
       dispatch({ type: "UPDATE_SUCCESS" });
@@ -114,6 +115,20 @@ export default function ProductEditScreen() {
     } catch (err) {
       toast.error(getError(err));
       dispatch({ type: "UPLOAD_FAIL", payload: getError(err) });
+    }
+  };
+
+  const deleteHandler = async () => {
+    if (window.confirm("Are you sure you want to delete this product?")) {
+      try {
+        await axios.delete(`/api/products/${productId}`, {
+          headers: { Authorization: `Bearer ${userInfo.token}` },
+        });
+        toast.success("Product deleted successfully");
+        navigate("/admin/products");
+      } catch (error) {
+        toast.error(getError(error));
+      }
     }
   };
 
@@ -224,16 +239,32 @@ export default function ProductEditScreen() {
                   </Col>
                 </Row>
 
-                <Form.Group className="mb-4" controlId="countInStock">
-                  <Form.Label className="fw-bold fs-6">Current Stock</Form.Label>
-                  <Form.Control
-                    type="number"
-                    value={countInStock}
-                    className="py-2 px-3 border-0 bg-light"
-                    onChange={(e) => setCountInStock(e.target.value)}
-                    required
-                  />
-                </Form.Group>
+                <Row className="mb-4">
+                  <Col md={6}>
+                    <Form.Group controlId="countInStock">
+                      <Form.Label className="fw-bold fs-6">Current Stock</Form.Label>
+                      <Form.Control
+                        type="number"
+                        value={countInStock}
+                        className="py-2 px-3 border-0 bg-light"
+                        disabled
+                        readOnly
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group controlId="addStock">
+                      <Form.Label className="fw-bold fs-6 text-success">Add New Stock</Form.Label>
+                      <Form.Control
+                        type="number"
+                        value={addStock}
+                        className="py-2 px-3 border border-success"
+                        onChange={(e) => setAddStock(e.target.value)}
+                        placeholder="e.g. 10"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
 
                 <Form.Group className="mb-4" controlId="description">
                   <Form.Label className="fw-bold fs-6">Description</Form.Label>
@@ -257,9 +288,18 @@ export default function ProductEditScreen() {
                   >
                     {loadingUpdate ? "Updating..." : "Save Product Changes"}
                   </Button>
+                  <Button
+                    variant="danger"
+                    size="lg"
+                    type="button"
+                    className="rounded-pill py-2 fw-bold shadow-sm"
+                    onClick={deleteHandler}
+                  >
+                    <i className="fas fa-trash-alt me-2"></i> Delete the product
+                  </Button>
                   <Button 
                     variant="outline-secondary" 
-                    className="rounded-pill"
+                    className="rounded-pill py-2"
                     onClick={() => navigate("/admin/products")}
                   >
                     Back to Inventory

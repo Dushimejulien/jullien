@@ -57,9 +57,7 @@ function Product(props) {
         </div>
 
         <div className="mt-auto d-grid gap-2">
-          {product.countInStock === 0 ? (
-            <Button variant="light" disabled className="rounded-pill">Out of stock</Button>
-          ) : userInfo && (userInfo.isSeller || userInfo.isAdmin) ? (
+          {userInfo && (userInfo.isSeller || userInfo.isAdmin) ? (
             <Button
               onClick={() => navigate(`/admin/product/${product._id}`)}
               variant="outline-primary"
@@ -68,6 +66,8 @@ function Product(props) {
               <i className="fas fa-edit me-2"></i>
               Edit Product
             </Button>
+          ) : product.countInStock === 0 ? (
+            <Button variant="light" disabled className="rounded-pill">Out of stock</Button>
           ) : (
             <Button
               onClick={() => addToCartHandler(product)}

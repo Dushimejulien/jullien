@@ -47,12 +47,16 @@ function HomeScreen() {
   }, []);
 
   // Group products by category
-  const categoriesMap = Array.isArray(products) ? products.reduce((acc, product) => {
+  const visibleProducts = Array.isArray(products) 
+    ? products.filter(p => p.countInStock > 0 || (userInfo && (userInfo.isAdmin || userInfo.isSeller)))
+    : [];
+
+  const categoriesMap = visibleProducts.reduce((acc, product) => {
     const category = product.category || "General";
     if (!acc[category]) acc[category] = [];
     acc[category].push(product);
     return acc;
-  }, {}) : {};
+  }, {});
 
   return (
     <Container className="py-4 mt-3">

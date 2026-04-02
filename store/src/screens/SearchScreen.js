@@ -72,7 +72,8 @@ export default function SearchScreen() {
         const { data } = await axios.get(
           `/api/products/search?page=${page}&query=${query}&category=${category}&price=${price}&rating=${rating}&order=${order}&stock=${stock}`
         );
-        dispatch({ type: "FETCH_SUCCESS", payload: data });
+        const filteredProducts = data.products.filter(p => p.countInStock > 0 || (userInfo && (userInfo.isAdmin || userInfo.isSeller)));
+        dispatch({ type: "FETCH_SUCCESS", payload: { ...data, products: filteredProducts } });
       } catch (err) {
         dispatch({ type: "FETCH_FAIL", payload: getError(err) });
       }

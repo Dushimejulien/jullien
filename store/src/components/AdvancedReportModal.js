@@ -39,7 +39,8 @@ export default function AdvancedReportModal({ show, onHide }) {
         setSearching(true);
         try {
           const { data } = await axios.get(`/api/products/search?query=${query}`);
-          setSearchResults(data.products || []);
+          const inStockProducts = (data.products || []).filter(p => p.countInStock > 0);
+          setSearchResults(inStockProducts);
         } catch (err) { console.error(getError(err)); } finally { setSearching(false); }
       } else { setSearchResults([]); }
     }, 500);

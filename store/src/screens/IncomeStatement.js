@@ -7,6 +7,8 @@ import axios from 'axios';
 import { Store } from '../Store';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { toast } from 'react-toastify';
+import { getError } from '../utils';
 
 // Period helpers
 const getPeriodDates = (period) => {
@@ -58,6 +60,9 @@ const IncomeStatement = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const [selectedReports, setSelectedReports] = useState([]);
+  const [deleting, setDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -127,7 +132,42 @@ const IncomeStatement = () => {
     } finally {
       setLoading(false);
     }
-  }, [activePeriod, searchQuery, userInfo, limit]);
+  }, [activePeriod, limit, searchQuery, userInfo]);
+
+  const toggleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedReports(reports.map(r => r._id));
+    } else {
+      setSelectedReports([]);
+    }
+  };
+
+  const toggleSelect = (id) => {
+    if (selectedReports.includes(id)) {
+      setSelectedReports(selectedReports.filter(x => x !== id));
+    } else {
+      setSelectedReports([...selectedReports, id]);
+    }
+  };
+
+  const deleteSelectedHandler = async () => {
+    if (window.confirm("Are you sure you want to delete selected reports?")) {
+      try {
+        setDeleting(true);
+        await axios.delete('/api/report', { 
+          data: { reportIds: selectedReports }, 
+          headers: { Authorization: `Bearer ${userInfo.token}` } 
+        });
+        toast.success("Reports deleted successfully");
+        setSelectedReports([]);
+        fetchReports(currentPage);
+      } catch (err) {
+        toast.error(getError(err));
+      } finally {
+        setDeleting(false);
+      }
+    }
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -226,13 +266,30 @@ const IncomeStatement = () => {
 
       {error && <Alert variant="danger" className="border-0 shadow-sm">{error}</Alert>}
 
+      {userInfo && userInfo.isAdmin && selectedReports.length > 0 && (
+        <div className="mb-3">
+          <Button variant="danger" className="rounded-pill shadow-sm" onClick={deleteSelectedHandler} disabled={deleting}>
+            <i className="fas fa-trash-alt me-2"></i> {deleting ? 'Deleting...' : `Delete ${selectedReports.length} Selected Reports`}
+          </Button>
+        </div>
+      )}
+
       {/* ── Data Table ── */}
       <Card className="border-0 shadow-sm overflow-hidden bg-card mb-4">
         <div className="table-responsive">
           <Table hover className="mb-0 admin-table align-middle">
             <thead className="bg-light">
               <tr className="small text-uppercase ls-wide text-muted">
-                <th className="ps-4">Date</th>
+                {userInfo && userInfo.isAdmin && (
+                  <th className="ps-4" style={{ width: '40px' }}>
+                    <Form.Check 
+                      type="checkbox" 
+                      onChange={toggleSelectAll} 
+                      checked={reports.length > 0 && selectedReports.length === reports.length}
+                    />
+                  </th>
+                )}
+                <th className={userInfo && userInfo.isAdmin ? "" : "ps-4"}>Date</th>
                 <th>Name</th>
                 <th>Quantity</th>
                 <th className="text-end">Costs</th>
@@ -250,13 +307,22 @@ const IncomeStatement = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="14" className="text-center py-5"><Spinner animation="border" variant="primary" /></td></tr>
+                <tr><td colSpan={userInfo && userInfo.isAdmin ? "15" : "14"} className="text-center py-5"><Spinner animation="border" variant="primary" /></td></tr>
               ) : reports.length === 0 ? (
-                <tr><td colSpan="14" className="text-center py-5 text-muted">No records found for this period.</td></tr>
+                <tr><td colSpan={userInfo && userInfo.isAdmin ? "15" : "14"} className="text-center py-5 text-muted">No records found for this period.</td></tr>
               ) : (
                 reports.map((report) => (
-                  <tr key={report._id}>
-                    <td className="ps-4 fw-bold">{formatDate(report.createdAt)}</td>
+                  <tr key={report._id} className={selectedReports.includes(report._id) ? "bg-light" : ""}>
+                    {userInfo && userInfo.isAdmin && (
+                      <td className="ps-4">
+                        <Form.Check 
+                          type="checkbox" 
+                          checked={selectedReports.includes(report._id)}
+                          onChange={() => toggleSelect(report._id)}
+                        />
+                      </td>
+                    )}
+                    <td className={`${userInfo && userInfo.isAdmin ? "" : "ps-4"} fw-bold`}>{formatDate(report.createdAt)}</td>
                     <td>
                       <div className="d-flex flex-wrap gap-1" style={{ maxWidth: '200px' }}>
                         {report.reportItems.slice(0, 2).map((item, i) => (
