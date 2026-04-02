@@ -62,6 +62,9 @@ export default function ProductListScreen() {
 
   const [showModal, setShowModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [deletingMulti, setDeletingMulti] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -107,6 +110,41 @@ export default function ProductListScreen() {
     setShowModal(true);
   };
 
+  const toggleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedProducts(products.map(p => p._id));
+    } else {
+      setSelectedProducts([]);
+    }
+  };
+
+  const toggleSelect = (id) => {
+    if (selectedProducts.includes(id)) {
+      setSelectedProducts(selectedProducts.filter(x => x !== id));
+    } else {
+      setSelectedProducts([...selectedProducts, id]);
+    }
+  };
+
+  const deleteSelectedHandler = async () => {
+    if (window.confirm("Are you sure you want to delete the selected products?")) {
+      try {
+        setDeletingMulti(true);
+        await axios.delete('/api/products', { 
+          data: { productIds: selectedProducts }, 
+          headers: { Authorization: `Bearer ${userInfo.token}` } 
+        });
+        toast.success("Products deleted successfully");
+        setSelectedProducts([]);
+        dispatch({ type: "DELETE_SUCCESS" });
+      } catch (err) {
+        toast.error(getError(err));
+      } finally {
+        setDeletingMulti(false);
+      }
+    }
+  };
+
   return (
     <Container fluid className="px-4 py-5">
       <Row className="mb-4 align-items-center">
@@ -135,6 +173,14 @@ export default function ProductListScreen() {
         onSuccess={() => dispatch({ type: "FETCH_REQUEST" })} // Trigger refresh
       />
 
+      {selectedProducts.length > 0 && (
+        <div className="mb-3">
+          <Button variant="danger" className="rounded-pill shadow-sm" onClick={deleteSelectedHandler} disabled={deletingMulti}>
+            <i className="fas fa-trash-alt me-2"></i> {deletingMulti ? 'Deleting...' : `Delete ${selectedProducts.length} Selected Products`}
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         <LoadingBox></LoadingBox>
       ) : error ? (
@@ -145,7 +191,14 @@ export default function ProductListScreen() {
             <Table responsive="md" hover className="mb-0 admin-table align-middle">
               <thead className="bg-light">
                 <tr>
-                  <th className="ps-4">PRODUCT</th>
+                  <th className="ps-4" style={{ width: '40px' }}>
+                    <Form.Check 
+                      type="checkbox" 
+                      onChange={toggleSelectAll} 
+                      checked={products.length > 0 && selectedProducts.length === products.length}
+                    />
+                  </th>
+                  <th>PRODUCT</th>
                   <th>CATEGORY</th>
                   <th>IN STOCK</th>
                   <th>COST (RWF)</th>
@@ -155,8 +208,15 @@ export default function ProductListScreen() {
               </thead>
               <tbody>
                 {products.map((product) => (
-                  <tr key={product._id}>
+                  <tr key={product._id} className={selectedProducts.includes(product._id) ? "bg-light" : ""}>
                     <td className="ps-4">
+                      <Form.Check 
+                        type="checkbox" 
+                        checked={selectedProducts.includes(product._id)}
+                        onChange={() => toggleSelect(product._id)}
+                      />
+                    </td>
+                    <td>
                       <div className="d-flex align-items-center">
                         <Image 
                           src={product.image} 

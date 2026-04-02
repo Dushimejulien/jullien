@@ -115,13 +115,31 @@ productRouter.patch(
 
 // delete product
 productRouter.delete(
-  "/:id",
+  "/:id?",
   isAuth,
   isAdmin,
   expressAsyncHandler(async (req, res) => {
-    const productId = req.params.id;
+    // Handle bulk delete
+    if (!req.params.id) {
+      const { productIds } = req.body;
+      
+      if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+        return res.status(400).send({message:"Product IDs array is required"});
+      }
+      
+      const result = await Product.deleteMany({
+        _id: { $in: productIds }
+      });
+      
+      if (result.deletedCount > 0) {
+        return res.send({ message: "Products Deleted" });
+      } else {
+        return res.status(404).send({ message: "Products Not Found" });
+      }
+    }
 
-    // Use deleteOne or deleteMany instead of remove
+    // Handle single delete
+    const productId = req.params.id;
     const result = await Product.deleteOne({ _id: productId });
 
     if (result.deletedCount > 0) {
