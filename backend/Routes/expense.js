@@ -17,22 +17,47 @@ expenseRouter.post(
 
 
 
-expenseRouter.delete('/:id', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const deletedExpense = await Expense.findByIdAndDelete(id);
-
-    if (deletedExpense) {
-      res.json({ message: 'Expense deleted successfully' });
-    } else {
-      res.status(404).json({ message: 'Expense not found' });
+expenseRouter.delete(
+  '/:id?',
+  isAuth,
+  isAdmin,
+  expressAsyncHandler(async (req, res) => {
+    try {
+      // Handle bulk delete
+      if (!req.params.id) {
+        const { expenseIds } = req.body;
+        
+        if (!expenseIds || !Array.isArray(expenseIds) || expenseIds.length === 0) {
+          return res.status(400).send({ message: "Expense IDs array is required" });
+        }
+        
+        const result = await Expense.deleteMany({
+          _id: { $in: expenseIds }
+        });
+        
+        if (result.deletedCount > 0) {
+          return res.send({
+            message: `${result.deletedCount} expense(s) successfully deleted`,
+            deletedCount: result.deletedCount
+          });
+        } else {
+          return res.status(404).send({ message: "No expenses found with the provided IDs" });
+        }
+      }
+      
+      // Handle single delete
+      const expense = await Expense.findByIdAndDelete(req.params.id);
+      if (expense) {
+        res.send({ message: "Expense successfully deleted" });
+      } else {
+        res.status(404).send({ message: "Expense not found" });
+      }
+    } catch (error) {
+      console.error(error);
+      res.status(500).send({ message: "Server error", error: error.message });
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server Error' });
-  }
-});
+  })
+);
 
 
 

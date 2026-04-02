@@ -35,6 +35,8 @@ function SeeReport() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activePeriod, setActivePeriod] = useState("all");
+  const [selectedExpenses, setSelectedExpenses] = useState([]);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,6 +66,41 @@ function SeeReport() {
   const fmtDate = (d) =>
     new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 
+  const toggleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedExpenses(filtered.map(x => x._id));
+    } else {
+      setSelectedExpenses([]);
+    }
+  };
+
+  const toggleSelect = (id) => {
+    if (selectedExpenses.includes(id)) {
+      setSelectedExpenses(selectedExpenses.filter(x => x !== id));
+    } else {
+      setSelectedExpenses([...selectedExpenses, id]);
+    }
+  };
+
+  const deleteSelectedHandler = async () => {
+    if (window.confirm("Are you sure you want to delete selected expenses?")) {
+      try {
+        setDeleting(true);
+        await axios.delete('/api/expense', {
+          data: { expenseIds: selectedExpenses },
+          headers: { Authorization: `Bearer ${userInfo.token}` }
+        });
+        setData(data.filter(x => !selectedExpenses.includes(x._id)));
+        setSelectedExpenses([]);
+        alert("Expenses deleted successfully");
+      } catch (err) {
+        alert("Failed to delete expenses");
+      } finally {
+        setDeleting(false);
+      }
+    }
+  };
+
   return (
     <Container className="py-4">
       <Helmet>
@@ -77,9 +114,16 @@ function SeeReport() {
             {filtered.length} of {data.length} records
           </p>
         </div>
-        <Button variant="primary" className="rounded-pill px-4" onClick={() => navigate("/admin/create")}>
-          <i className="fas fa-plus me-2"></i> New Entry
-        </Button>
+        <div className="d-flex gap-2">
+          {userInfo.isAdmin && selectedExpenses.length > 0 && (
+            <Button variant="danger" className="rounded-pill px-4" onClick={deleteSelectedHandler} disabled={deleting}>
+              <i className="fas fa-trash-alt me-2"></i> {deleting ? 'Deleting...' : `Delete ${selectedExpenses.length}`}
+            </Button>
+          )}
+          <Button variant="primary" className="rounded-pill px-4" onClick={() => navigate("/admin/create")}>
+            <i className="fas fa-plus me-2"></i> New Entry
+          </Button>
+        </div>
       </div>
 
       {/* Period toggle */}
@@ -131,18 +175,36 @@ function SeeReport() {
             <Table hover className="mb-0 admin-table align-middle">
               <thead className="bg-light">
                 <tr className="small text-uppercase ls-wide text-muted">
-                  <th className="ps-4">Timestamp</th>
+                  {userInfo.isAdmin && (
+                    <th className="ps-4" style={{ width: '40px' }}>
+                      <input 
+                        type="checkbox" 
+                        onChange={toggleSelectAll} 
+                        checked={filtered.length > 0 && selectedExpenses.length === filtered.length}
+                      />
+                    </th>
+                  )}
+                  <th className={userInfo.isAdmin ? "" : "ps-4"}>Timestamp</th>
                   <th>Description / Reason</th>
                   <th className="text-end pe-4">Amount Settled</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan="3" className="text-center py-5 text-muted">No expense records for this period.</td></tr>
+                  <tr><td colSpan={userInfo.isAdmin ? "4" : "3"} className="text-center py-5 text-muted">No expense records for this period.</td></tr>
                 ) : (
                   filtered.map((expense) => (
-                    <tr key={expense._id}>
-                      <td className="ps-4">
+                    <tr key={expense._id} className={selectedExpenses.includes(expense._id) ? "bg-light" : ""}>
+                      {userInfo.isAdmin && (
+                        <td className="ps-4">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedExpenses.includes(expense._id)}
+                            onChange={() => toggleSelect(expense._id)}
+                          />
+                        </td>
+                      )}
+                      <td className={userInfo.isAdmin ? "" : "ps-4"}>
                         <div className="fw-bold fs-6">{fmtDate(expense.createdAt)}</div>
                         <div className="small text-muted">Verified Transaction</div>
                       </td>
