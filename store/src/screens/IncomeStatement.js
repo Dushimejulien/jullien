@@ -11,11 +11,18 @@ import { toast } from 'react-toastify';
 import { getError } from '../utils';
 
 // Period helpers
-const getPeriodDates = (period) => {
+const getPeriodDates = (period, customRange = null) => {
   const now = new Date();
   let start, end;
   end = new Date(now);
   end.setHours(23, 59, 59, 999);
+
+  if (period === 'custom' && customRange?.start) {
+    return { 
+      startDate: new Date(customRange.start).toISOString(), 
+      endDate: customRange.end ? new Date(customRange.end).setHours(23, 59, 59, 999) && new Date(customRange.end).toISOString() : new Date(customRange.start).setHours(23, 59, 59, 999) && new Date(customRange.start).toISOString()
+    };
+  }
 
   switch (period) {
     case 'daily':
@@ -50,6 +57,7 @@ const PERIODS = [
   { key: 'monthly',   label: '🗓 This Month' },
   { key: 'quarterly', label: '📊 This Quarter' },
   { key: 'yearly',    label: '🗃 This Year' },
+  { key: 'custom',    label: '🔍 Custom Range' },
 ];
 
 const IncomeStatement = () => {
@@ -70,6 +78,7 @@ const IncomeStatement = () => {
 
   // Quick period filter
   const [activePeriod, setActivePeriod] = useState('all');
+  const [customRange, setCustomRange] = useState({ start: '', end: '' });
 
   // Manual keyword search
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,7 +94,7 @@ const IncomeStatement = () => {
       const params = new URLSearchParams({ page, limit });
       if (searchQuery) params.append('key', searchQuery);
 
-      const dates = getPeriodDates(activePeriod);
+      const dates = getPeriodDates(activePeriod, customRange);
       if (dates) params.append('dateFilter', JSON.stringify(dates));
 
       const [reportRes, expRes] = await Promise.all([
@@ -132,7 +141,7 @@ const IncomeStatement = () => {
     } finally {
       setLoading(false);
     }
-  }, [activePeriod, limit, searchQuery, userInfo]);
+  }, [activePeriod, limit, searchQuery, userInfo, customRange]);
 
   const toggleSelectAll = (e) => {
     if (e.target.checked) {
@@ -204,9 +213,8 @@ const IncomeStatement = () => {
         </Button>
       </div>
 
-      {/* ── Period Toggle ── */}
       <div className="mb-4">
-        <div className="d-flex flex-wrap gap-2">
+        <div className="d-flex flex-wrap gap-2 mb-3">
           {PERIODS.map((p) => (
             <Button
               key={p.key}
@@ -218,6 +226,41 @@ const IncomeStatement = () => {
             </Button>
           ))}
         </div>
+
+        {activePeriod === 'custom' && (
+          <Card className="border-0 shadow-sm bg-card p-3 animate__animated animate__fadeIn">
+            <Row className="align-items-end g-3">
+              <Col xs={12} md={4}>
+                <Form.Label className="small fw-bold text-muted">Start Date</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={customRange.start}
+                  onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
+                  className="rounded-3"
+                />
+              </Col>
+              <Col xs={12} md={4}>
+                <Form.Label className="small fw-bold text-muted">End Date</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={customRange.end}
+                  onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
+                  className="rounded-3"
+                />
+              </Col>
+              <Col xs={12} md={4}>
+                <Button 
+                  variant="primary" 
+                  className="w-100 rounded-pill fw-bold"
+                  onClick={() => fetchReports(1)}
+                  disabled={!customRange.start}
+                >
+                  <i className="fas fa-filter me-2"></i> Apply Range
+                </Button>
+              </Col>
+            </Row>
+          </Card>
+        )}
       </div>
 
       {/* ── Period Summary Cards ── */}
