@@ -22,9 +22,9 @@ export default function AdvancedReportModal({ show, onHide }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [searching, setSearching] = useState(false);
 
-  // Core Model Fields as explicit state
   const [real, setReal] = useState(0);               
   const [soldAt, setSoldAt] = useState(0);           
+  const [costPrice, setCostPrice] = useState(0);
   const [depts, setDepts] = useState(0);             
   const [ibyangiritse, setIbyangiritse] = useState(0);  
   const [givenTo, setGivenTo] = useState('');        
@@ -53,13 +53,14 @@ export default function AdvancedReportModal({ show, onHide }) {
   const selectProduct = (p) => {
     setSelectedProduct(p);
     setSoldAt(p.price || 0);
+    setCostPrice(p.costPrice || 0);
     setReal(0); setIbyangiritse(0); setDepts(0); setGivenTo(''); setComments('Paid'); setPaymentMethod('Cash'); setStep(1); setSearchResults([]); setQuery('');
   };
 
   const calculateTotals = () => {
     const qty = Number(real) || 0;
     const unitSoldPrice = Number(soldAt) || 0;
-    const unitCostPrice = selectedProduct?.costPrice || 0;
+    const unitCostPrice = Number(costPrice) || 0;
     const damageQty = Number(ibyangiritse) || 0;
     const totalDebt = Number(depts) || 0;
 
@@ -121,7 +122,27 @@ export default function AdvancedReportModal({ show, onHide }) {
             <h2 className="fw-bold mb-1 fs-4 mt-3">Daily Inventory Data</h2>
             <p className="text-muted small mb-4">{selectedProduct.name}</p>
             <Form onSubmit={(e) => { e.preventDefault(); setStep(2); }}>
-              <Row className="mb-3"><Col md={6}><label style={labelStyle}>Real Quantity Sold</label><Form.Control type="number" style={inputStyle} value={real} onChange={(e) => setReal(e.target.value)} required /></Col><Col md={6}><label style={labelStyle}>Actual Sold Price</label><Form.Control type="number" style={inputStyle} value={soldAt} onChange={(e) => setSoldAt(e.target.value)} required /></Col></Row>
+              <Row className="mb-3">
+                <Col md={4}>
+                  <label style={labelStyle}>Real Quantity Sold</label>
+                  <Form.Control type="number" style={inputStyle} value={real} onChange={(e) => {
+                    const val = Number(e.target.value);
+                    if (val > selectedProduct.countInStock) {
+                      toast.error(`Quantity cannot exceed available stock (${selectedProduct.countInStock})`);
+                    } else {
+                      setReal(e.target.value);
+                    }
+                  }} required />
+                </Col>
+                <Col md={4}>
+                  <label style={labelStyle}>Cost Price</label>
+                  <Form.Control type="number" style={inputStyle} value={costPrice} onChange={(e) => setCostPrice(e.target.value)} required />
+                </Col>
+                <Col md={4}>
+                  <label style={labelStyle}>Actual Sold Price</label>
+                  <Form.Control type="number" style={inputStyle} value={soldAt} onChange={(e) => setSoldAt(e.target.value)} required />
+                </Col>
+              </Row>
               <Row className="mb-3">
                 <Col md={6}><label style={labelStyle}>Debt Amount (depts)</label><Form.Control type="number" style={inputStyle} value={depts} onChange={(e) => { const val = e.target.value; setDepts(val); if (Number(val) > 0) { setPaymentMethod('Debt'); } }} placeholder="0" /></Col>
                 <Col md={6}><label style={labelStyle}>Payment Method</label><Form.Select style={inputStyle} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}><option value="Cash">Cash</option><option value="MoMo">MoMo</option><option value="Debt">Debt (Ideni)</option></Form.Select></Col>
