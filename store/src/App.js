@@ -28,6 +28,7 @@ import SearchBox from './components/SearchBox';
 import SearchScreen from './screens/SearchScreen';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardScreen from './screens/DashboardScreen';
+import ProductListScreen from './screens/productListScreen';
 import ProductEditScreen from './screens/ProductEditScreen';
 import OrderListScreen from './screens/OrderListScreen';
 import UserListScreen from './screens/UserListScreen';
@@ -412,6 +413,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ProductEditScreen />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/products"
+                element={
+                  <ProtectedRoute>
+                    <ProductListScreen />
                   </ProtectedRoute>
                 }
               />

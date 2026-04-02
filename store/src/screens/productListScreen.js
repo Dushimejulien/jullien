@@ -145,6 +145,24 @@ export default function ProductListScreen() {
     }
   };
 
+  const createHandler = async () => {
+    if (window.confirm("Are you sure you want to create a new product?")) {
+      try {
+        const { data } = await axios.post(
+          "/api/products",
+          {},
+          {
+            headers: { Authorization: `Bearer ${userInfo.token}` },
+          }
+        );
+        toast.success("Product created successfully");
+        navigate(`/admin/product/${data.product._id}`);
+      } catch (err) {
+        toast.error(getError(err));
+      }
+    }
+  };
+
   return (
     <Container fluid className="px-4 py-5">
       <Row className="mb-4 align-items-center">
@@ -157,7 +175,7 @@ export default function ProductListScreen() {
             type="button"
             variant="primary"
             className="rounded-pill shadow-sm px-4"
-            onClick={() => navigate(`/admin/product/create`)}
+            onClick={createHandler}
           >
             <i className="fas fa-plus me-2"></i> Create Product
           </Button>
@@ -198,11 +216,10 @@ export default function ProductListScreen() {
                       checked={products.length > 0 && selectedProducts.length === products.length}
                     />
                   </th>
-                  <th>PRODUCT</th>
-                  <th>CATEGORY</th>
+                  <th>PRODUCT NAME</th>
                   <th>IN STOCK</th>
-                  <th>COST (RWF)</th>
-                  <th>PRICE (RWF)</th>
+                  <th>COST</th>
+                  <th>SELLING PRICE</th>
                   <th className="text-end pe-4">ACTIONS</th>
                 </tr>
               </thead>
@@ -226,11 +243,10 @@ export default function ProductListScreen() {
                         />
                         <div>
                           <div className="fw-bold">{product.name}</div>
-                          <div className="text-muted small">{product.brand}</div>
+                          <div className="text-muted small">{product.category}</div>
                         </div>
                       </div>
                     </td>
-                    <td><Badge bg="info" className="text-dark bg-opacity-25 px-3">{product.category}</Badge></td>
                     <td>
                       <Badge 
                         bg={product.countInStock < 10 ? "danger" : "light"} 
@@ -239,8 +255,8 @@ export default function ProductListScreen() {
                         {product.countInStock}
                       </Badge>
                     </td>
-                    <td className="fw-semibold">{product.costPrice ? product.costPrice.toLocaleString() : "0"}</td>
-                    <td className="fw-bold text-primary">{product.price ? product.price.toLocaleString() : "0"}</td>
+                    <td className="fw-semibold">{product.costPrice ? product.costPrice.toLocaleString() : "0"} RWF</td>
+                    <td className="fw-bold text-primary">{product.price ? product.price.toLocaleString() : "0"} RWF</td>
                     <td className="text-end pe-4">
                       <div className="d-flex justify-content-end gap-2">
                         <Button
