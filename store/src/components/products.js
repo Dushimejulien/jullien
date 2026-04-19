@@ -81,6 +81,15 @@ function Product(props) {
               <i className="fas fa-edit me-2"></i>
               Edit Product
             </Button>
+          ) : userInfo && userInfo.isSeller ? (
+            <Button
+              onClick={() => navigate(`/product/${product.slug}`)}
+              variant="outline-secondary"
+              className="rounded-pill"
+            >
+              <i className="fas fa-eye me-2"></i>
+              View Details
+            </Button>
           ) : product.countInStock === 0 ? (
             <Button variant="light" disabled className="rounded-pill">
               Out of stock
