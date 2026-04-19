@@ -5,7 +5,7 @@ import { Store } from "../Store";
 import { getError } from "../utils";
 import LoadingBox from "../components/LoadingBox";
 import MessageBox from "../components/MessageBox";
-import { Row, Col, Card, Container, ListGroup, Button } from "react-bootstrap";
+import { Row, Col, Card, Container, ListGroup, Button, Form } from "react-bootstrap";
 
 const reducer = (state, action) => {
   switch (action.type) {
@@ -21,11 +21,21 @@ const reducer = (state, action) => {
 };
 
 // ── Period helpers ──────────────────────────────────────────────────
-const getPeriodDates = (period) => {
+const getPeriodDates = (period, customRange = null) => {
   const now = new Date();
   let start;
   const end = new Date(now);
   end.setHours(23, 59, 59, 999);
+
+  if (period === "custom" && customRange?.start) {
+    const endDate = customRange.end
+      ? new Date(new Date(customRange.end).setHours(23, 59, 59, 999))
+      : new Date(new Date(customRange.start).setHours(23, 59, 59, 999));
+    return {
+      startDate: new Date(customRange.start).toISOString(),
+      endDate: endDate.toISOString(),
+    };
+  }
 
   switch (period) {
     case "daily":
@@ -60,6 +70,7 @@ const PERIODS = [
   { key: "monthly",   label: "This Month" },
   { key: "quarterly", label: "This Quarter" },
   { key: "yearly",    label: "This Year" },
+  { key: "custom",    label: "🔍 Custom Range" },
 ];
 
 // ── Main Component ──────────────────────────────────────────────────
@@ -74,6 +85,7 @@ export default function ReportDashboard() {
   const { userInfo, cart: { mode } } = state;
 
   const [activePeriod, setActivePeriod] = useState("all");
+  const [customRange, setCustomRange] = useState({ start: "", end: "" });
   // Period-specific aggregates fetched from search endpoint
   const [periodStats, setPeriodStats] = useState({ sales: 0, netProfit: 0, depts: 0, count: 0 });
 
@@ -94,11 +106,13 @@ export default function ReportDashboard() {
     fetchSummary();
   }, [userInfo]);
 
-  // Fetch period-scoped aggregates whenever activePeriod changes
+  // Fetch period-scoped aggregates whenever activePeriod / customRange changes
   const fetchPeriodStats = useCallback(async () => {
+    // Skip auto-fetch for custom mode until user explicitly applies
+    if (activePeriod === "custom" && !customRange.start) return;
     try {
       const params = new URLSearchParams({ page: 1, limit: 9999 });
-      const dates = getPeriodDates(activePeriod);
+      const dates = getPeriodDates(activePeriod, customRange);
       if (dates) params.append("dateFilter", JSON.stringify(dates));
 
       const [reportRes, expRes] = await Promise.all([
@@ -135,7 +149,7 @@ export default function ReportDashboard() {
     } catch {
       // fail silently
     }
-  }, [activePeriod, userInfo]);
+  }, [activePeriod, customRange, userInfo]);
 
   useEffect(() => { fetchPeriodStats(); }, [fetchPeriodStats]);
 
@@ -171,7 +185,7 @@ export default function ReportDashboard() {
       </div>
 
       {/* ── Period Toggles ── */}
-      <div className="d-flex flex-wrap gap-2 mb-4">
+      <div className="d-flex flex-wrap gap-2 mb-3">
         {PERIODS.map((p) => (
           <Button
             key={p.key}
@@ -183,6 +197,42 @@ export default function ReportDashboard() {
           </Button>
         ))}
       </div>
+
+      {/* ── Custom Date Range Picker ── */}
+      {activePeriod === "custom" && (
+        <Card className="border-0 shadow-sm bg-card p-3 mb-4">
+          <Row className="align-items-end g-3">
+            <Col xs={12} md={4}>
+              <Form.Label className="small fw-bold text-muted">Start Date</Form.Label>
+              <Form.Control
+                type="date"
+                value={customRange.start}
+                onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
+                className="rounded-3"
+              />
+            </Col>
+            <Col xs={12} md={4}>
+              <Form.Label className="small fw-bold text-muted">End Date</Form.Label>
+              <Form.Control
+                type="date"
+                value={customRange.end}
+                onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
+                className="rounded-3"
+              />
+            </Col>
+            <Col xs={12} md={4}>
+              <Button
+                variant="primary"
+                className="w-100 rounded-pill fw-bold"
+                onClick={() => fetchPeriodStats()}
+                disabled={!customRange.start}
+              >
+                <i className="fas fa-filter me-2"></i> Apply Range
+              </Button>
+            </Col>
+          </Row>
+        </Card>
+      )}
 
       {/* ── Period Metric Cards ── */}
       <Row className="mb-4 g-3">
