@@ -319,6 +319,21 @@ reportRouter.get("/search", isAuth, isSellerOrAdmin, async (req, res) => {
     }
     
     const totalCount = await Report.countDocuments(searchFilter);
+
+    // Calculate aggregated totals for the entire filtered set
+    const aggregateTotals = await Report.aggregate([
+      { $match: searchFilter },
+      {
+        $group: {
+          _id: null,
+          sales: { $sum: "$sales" },
+          grossProfit: { $sum: "$grossProfit" },
+          depts: { $sum: "$depts" },
+        },
+      },
+    ]);
+
+    const summary = aggregateTotals.length > 0 ? aggregateTotals[0] : { sales: 0, grossProfit: 0, depts: 0 };
     
     const data = await Report.find(searchFilter)
       .skip(skip)
@@ -329,7 +344,8 @@ reportRouter.get("/search", isAuth, isSellerOrAdmin, async (req, res) => {
       data,
       totalCount,
       totalPages: Math.ceil(totalCount / limit),
-      currentPage: parseInt(page)
+      currentPage: parseInt(page),
+      summary
     });
   } catch (error) {
     console.error("Error fetching report data:", error);

@@ -121,20 +121,13 @@ const IncomeStatement = () => {
       setTotalPages(data.totalPages);
       setTotalCount(data.totalCount);
 
-      // Compute period totals: Gross Profit - Expenses = Net Profit
-      const totals = data.data.reduce(
-        (acc, r) => ({
-          sales: acc.sales + (r.sales || 0),
-          grossProfit: acc.grossProfit + Number(r.grossProfit || 0),
-          depts: acc.depts + (r.depts || 0),
-        }),
-        { sales: 0, grossProfit: 0, depts: 0 }
-      );
+      // Use summary provided by backend for the entire filtered set
+      const summary = data.summary || { sales: 0, grossProfit: 0, depts: 0 };
       
       setPeriodTotals({
-        sales: totals.sales,
-        netProfit: totals.grossProfit - totalPeriodExpenses,
-        depts: totals.depts
+        sales: summary.sales,
+        netProfit: summary.grossProfit - totalPeriodExpenses,
+        depts: summary.depts
       });
     } catch {
       setError('Failed to fetch reports. Please try again.');

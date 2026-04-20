@@ -111,7 +111,7 @@ export default function ReportDashboard() {
     // Skip auto-fetch for custom mode until user explicitly applies
     if (activePeriod === "custom" && !customRange.start) return;
     try {
-      const params = new URLSearchParams({ page: 1, limit: 9999 });
+      const params = new URLSearchParams({ page: 1, limit: 1 });
       const dates = getPeriodDates(activePeriod, customRange);
       if (dates) params.append("dateFilter", JSON.stringify(dates));
 
@@ -130,21 +130,13 @@ export default function ReportDashboard() {
       });
       const totalPeriodExpenses = periodExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
-      const totals = (data.data || []).reduce(
-        (acc, r) => ({
-          sales: acc.sales + (r.sales || 0),
-          grossProfit: acc.grossProfit + Number(r.grossProfit || 0),
-          depts: acc.depts + (r.depts || 0),
-          count: acc.count + 1,
-        }),
-        { sales: 0, grossProfit: 0, depts: 0, count: 0 }
-      );
+      const summary = data.summary || { sales: 0, grossProfit: 0, depts: 0 };
       
       setPeriodStats({
-        sales: totals.sales,
-        netProfit: totals.grossProfit - totalPeriodExpenses,
-        depts: totals.depts,
-        count: totals.count
+        sales: summary.sales,
+        netProfit: summary.grossProfit - totalPeriodExpenses,
+        depts: summary.depts,
+        count: data.totalCount || 0
       });
     } catch {
       // fail silently
